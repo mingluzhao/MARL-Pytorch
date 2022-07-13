@@ -1,7 +1,7 @@
 import torch
 # from gym.spaces import Box, Discrete
-from maddpg.utils.misc import soft_update, average_gradients, onehot_from_logits, gumbel_softmax
-from maddpg.utils.agents import DDPGAgent
+from maddpg.src.utils.misc import soft_update, average_gradients, onehot_from_logits, gumbel_softmax
+from maddpg.src.utils.agents import DDPGAgent
 
 MSELoss = torch.nn.MSELoss()
 

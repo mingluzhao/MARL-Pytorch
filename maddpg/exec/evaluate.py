@@ -5,7 +5,7 @@ import imageio
 from pathlib import Path
 from torch.autograd import Variable
 from utils.make_env import make_env
-from maddpg.maddpg import MADDPG
+from maddpg.src.maddpg import MADDPG
 
 
 def run(config):

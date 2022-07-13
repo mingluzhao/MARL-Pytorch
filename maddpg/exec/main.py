@@ -4,8 +4,8 @@ import os
 from pathlib import Path
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
-from maddpg.utils.buffer import ReplayBuffer
-from maddpg.maddpg import MADDPG
+from maddpg.src.utils.buffer import ReplayBuffer
+from maddpg.src.maddpg import MADDPG
 from environment.multiAgentEnv import TransitMultiAgentChasing, ApplyActionForce, ApplyEnvironForce, \
     ResetMultiAgentChasing, ReshapeAction, Observe, GetCollisionForce, IntegrateState, \
     IsCollision, PunishForOutOfBound, getPosFromAgentState, getVelFromAgentState, GetActionCost
