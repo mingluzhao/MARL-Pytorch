@@ -1,6 +1,12 @@
 import argparse
 import torch
 import os
+import sys
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
+dirName = os.path.dirname(__file__)
+sys.path.append(os.path.join(dirName, '..'))
+sys.path.append(os.path.join(dirName, '..', '..'))
 from pathlib import Path
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
