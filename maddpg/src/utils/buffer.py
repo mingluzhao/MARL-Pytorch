@@ -83,3 +83,10 @@ class ReplayBuffer(object):
         else:
             inds = np.arange(max(0, self.curr_i - N), self.curr_i)
         return [self.rewardsBuffer[i][inds].mean() for i in range(self.numAgents)]
+
+    def get_tot_rewards(self, N):
+        if self.filled_i == self.bufferSize:
+            inds = np.arange(self.curr_i - N, self.curr_i)  # allow for negative indexing
+        else:
+            inds = np.arange(max(0, self.curr_i - N), self.curr_i)
+        return [self.rewardsBuffer[i][inds].sum() for i in range(self.numAgents)]

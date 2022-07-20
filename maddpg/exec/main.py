@@ -124,8 +124,7 @@ def run(config):
 
     buffer = ReplayBuffer(config.bufferSize, numAgents, obsShape, actionDimList)
     totalRunTime = 0
-    for epsID in range(0, config.maxEpisode):
-        print("Episodes %i-%i of %i" % (epsID + 1, epsID + 2, config.maxEpisode))
+    for epsID in range(maxEpisode):
         state = reset()
         # obs.shape = (n_rollout_threads, nagent)(nobs), nobs differs per agent so not tensor
         maddpg.prep_rollouts(device='cpu')
@@ -161,10 +160,10 @@ def run(config):
                     maddpg.update(sample, agentID, logger=logger)
                 maddpg.update_all_targets()
                 maddpg.prep_rollouts(device='cpu')
-        epsRewards = buffer.get_average_rewards(config.maxTimeStep)
+        epsRewards = buffer.get_tot_rewards(config.maxTimeStep)
         
         for agentID, agentEpsReward in enumerate(epsRewards):
-            logger.add_scalar('agent%i/mean_episode_rewards' % agentID, agentEpsReward, epsID)
+            logger.add_scalar('agent%i/tot_episode_rewards' % agentID, agentEpsReward, epsID)
 
         if epsID % config.save_interval == 0:
             os.makedirs(run_dir / 'incremental', exist_ok=True)
@@ -182,20 +181,19 @@ if __name__ == '__main__':
 
     parser.add_argument("--num_predators", default=3, type=int, help="num_predators")
     parser.add_argument("--speed", default=1, type=float, help="speed")
-    parser.add_argument("--cost", default=0.01, type=float, help="cost")
+    parser.add_argument("--cost", default=0, type=float, help="cost")
     parser.add_argument("--selfish", default=1, type=float, help="selfish")
 
     parser.add_argument("--seed", default=1, type=int, help="Random seed")
     parser.add_argument("--n_training_threads", default=6, type=int)
     parser.add_argument("--bufferSize", default=int(1e6), type=int)
-    parser.add_argument("--maxEpisode", default=25000, type=int)
-    parser.add_argument("--maxTimeStep", default=25, type=int)
+    parser.add_argument("--maxTimeStep", default=75, type=int)
     parser.add_argument("--learnInterval", default=100, type=int)
     parser.add_argument("--minibatchSize", default=1024, type=int, help="Batch size for model training")
     parser.add_argument("--n_exploration_eps", default=25000, type=int)
     parser.add_argument("--init_noise_scale", default=0.3, type=float)
     parser.add_argument("--final_noise_scale", default=0.0, type=float)
-    parser.add_argument("--save_interval", default=1000, type=int)
+    parser.add_argument("--save_interval", default=10000, type=int)
     parser.add_argument("--lr", default=0.01, type=float)
     parser.add_argument("--tau", default=0.01, type=float)
     parser.add_argument("--agent_alg", default="MADDPG", type=str, choices=['MADDPG', 'DDPG'])
