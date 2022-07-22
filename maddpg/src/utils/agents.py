@@ -33,7 +33,7 @@ class DDPGAgent(object):
         if not isDiscreteAction:
             self.exploration = OUNoise(dimPolicyOutput)
         else:
-            self.exploration = 0.3  # epsilon for eps-greedy
+            self.exploration = 0.3  # epsilon for eps-greedy TODO: not used for discrete actions
         self.isDiscreteAction = isDiscreteAction
 
     def resetNoise(self):

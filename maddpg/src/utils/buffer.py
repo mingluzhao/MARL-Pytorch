@@ -49,12 +49,19 @@ class ReplayBuffer(object):
             self.filled_i = self.bufferSize
 
         for agent_i in range(self.numAgents):
-            self.obsBuffer[agent_i][self.curr_i:self.curr_i + nentries] = np.vstack([observations[agent_i]])
             # actions are already batched by agent, so they are indexed differently
+            # self.obsBuffer[agent_i][self.curr_i:self.curr_i + nentries] = np.vstack([observations[agent_i]]) #TODO for handcrafted env
+            # self.actionsBuffer[agent_i][self.curr_i:self.curr_i + nentries] = actions[agent_i]
+            # self.rewardsBuffer[agent_i][self.curr_i:self.curr_i + nentries] = rewards[agent_i]
+            # self.nexObsBuffer[agent_i][self.curr_i:self.curr_i + nentries] = np.vstack([next_observations[agent_i]])
+            # self.terminalBuffer[agent_i][self.curr_i:self.curr_i + nentries] = dones
+
+            self.obsBuffer[agent_i][self.curr_i:self.curr_i + nentries] = np.vstack(observations[:, agent_i])
             self.actionsBuffer[agent_i][self.curr_i:self.curr_i + nentries] = actions[agent_i]
-            self.rewardsBuffer[agent_i][self.curr_i:self.curr_i + nentries] = rewards[agent_i]
-            self.nexObsBuffer[agent_i][self.curr_i:self.curr_i + nentries] = np.vstack([next_observations[agent_i]])
-            self.terminalBuffer[agent_i][self.curr_i:self.curr_i + nentries] = dones
+            self.rewardsBuffer[agent_i][self.curr_i:self.curr_i + nentries] = rewards[:, agent_i]
+            self.nexObsBuffer[agent_i][self.curr_i:self.curr_i + nentries] = np.vstack(next_observations[:, agent_i])
+            self.terminalBuffer[agent_i][self.curr_i:self.curr_i + nentries] = dones[:, agent_i]
+
         self.curr_i += nentries
         if self.filled_i < self.bufferSize:
             self.filled_i += nentries
