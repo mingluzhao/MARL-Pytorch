@@ -145,8 +145,8 @@ if __name__ == '__main__':
     parser.add_argument("--discrete_action", action='store_true')
     
     parser.add_argument("--n_rollout_threads", default=1, type=int)
-    parser.add_argument("--hidden_dim", default=64, type=int)
-    parser.add_argument("--hidden_layer_num", default=64, type=int)
+    parser.add_argument("--hidden_dim", default=128, type=int)
+    parser.add_argument("--hidden_layer_num", default=2, type=int)
     config = parser.parse_args()
 
     run(config)
