@@ -77,6 +77,9 @@ class Agent(Entity):
         self.action = Action()
         # script behavior to execute
         self.action_callback = None
+        # fully cooperative scenario
+        self.selfish = 0
+        self.alive = True
 
 # multi-agent world
 class World(object):

@@ -114,7 +114,7 @@ class MADDPG(object):
         criticLoss.backward()
         if parallel:
             average_gradients(currentAgent.criticTrain)
-        torch.nn.utils.clip_grad_norm(currentAgent.criticTrain.parameters(), 0.5)
+        torch.nn.utils.clip_grad_norm_(currentAgent.criticTrain.parameters(), 0.5)
         currentAgent.critic_optimizer.step()
 
         # train Actor
@@ -153,7 +153,7 @@ class MADDPG(object):
         actorLoss.backward()
         if parallel:
             average_gradients(currentAgent.policyTrain)
-        torch.nn.utils.clip_grad_norm(currentAgent.policyTrain.parameters(), 0.5)
+        torch.nn.utils.clip_grad_norm_(currentAgent.policyTrain.parameters(), 0.5)
         currentAgent.policy_optimizer.step()
         if logger is not None:
             logger.add_scalars('agent%i/losses' % agentID, {'criticLoss': criticLoss, 'actorLoss': actorLoss}, self.niter)

@@ -123,7 +123,7 @@ def run(config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env_id", default= "simple_tag_master", type = str, help="Name of environment")
+    parser.add_argument("--env_id", default= "simple_tag", type = str, help="Name of environment")
     parser.add_argument("--model_name", default= "hunt_gym", type = str, help="Name of directory to store " + "model/training contents")
     parser.add_argument("--seed",
                         default=1, type=int,

@@ -2,6 +2,7 @@ import argparse
 import torch
 import time
 import imageio
+import numpy as np
 from pathlib import Path
 from torch.autograd import Variable
 from maddpg.src.utils.make_env import make_env
@@ -21,13 +22,16 @@ def run(config):
     maddpg.prep_rollouts(device='cpu')
     ifi = 1 / config.fps  # inter-frame interval
 
+    epsRewardTot = []
     for epsID in range(config.maxEpisodeToSample):
         print("Episode %i of %i" % (epsID + 1, config.maxEpisodeToSample))
         obs = env.reset()
-        if config.save_gifs:
-            frames = []
-            frames.append(env.render('rgb_array')[0])
-        env.render('human')
+        # if config.save_gifs:
+        #     frames = []
+        #     frames.append(env.render('rgb_array')[0])
+        # env.render('human')
+
+        epsReward = np.zeros(4)
         for t_i in range(config.episode_length):
             calc_start = time.time()
             # rearrange observations to be per agent, and convert to torch Variable
@@ -37,19 +41,25 @@ def run(config):
             # convert actions to numpy arrays
             actions = [ac.data.numpy().flatten() for ac in torch_actions]
             obs, rewards, dones, infos = env.step(actions)
-            if config.save_gifs:
-                frames.append(env.render('rgb_array')[0])
-            calc_end = time.time()
-            elapsed = calc_end - calc_start
-            if elapsed < ifi:
-                time.sleep(ifi - elapsed)
-            env.render('human')
-        if config.save_gifs:
-            gif_num = 0
-            while (gif_path / ('%i_%i.gif' % (gif_num, epsID))).exists():
-                gif_num += 1
-            imageio.mimsave(str(gif_path / ('%i_%i.gif' % (gif_num, epsID))), frames, duration=ifi)
+            epsReward += rewards
 
+            # if config.save_gifs:
+            #     frames.append(env.render('rgb_array')[0])
+            # calc_end = time.time()
+            # elapsed = calc_end - calc_start
+            # if elapsed < ifi:
+            #     time.sleep(ifi - elapsed)
+            # env.render('human')
+        # if config.save_gifs:
+        #     gif_num = 0
+        #     while (gif_path / ('%i_%i.gif' % (gif_num, ep_i))).exists():
+        #         gif_num += 1
+        #     imageio.mimsave(str(gif_path / ('%i_%i.gif' % (gif_num, ep_i))),
+        #                     frames, duration=ifi)
+        epsRewardTot.append(epsReward)
+
+    print("Mean Eps Reward: ", np.mean(epsRewardTot, axis=0))
+    print("SE Eps Reward: ", np.std(epsRewardTot, axis=0)/np.sqrt(len(epsRewardTot)))
     env.close()
 
 
@@ -62,7 +72,7 @@ if __name__ == '__main__':
     parser.add_argument("--save_gifs", action="store_true", help="Saves gif of each episode into model directory")
     parser.add_argument("--incremental", default=None, type=int,
                         help="Load incremental policy from given episode " + "rather than final policy")
-    parser.add_argument("--maxEpisodeToSample", default=10, type=int)
+    parser.add_argument("--maxEpisodeToSample", default=100, type=int)
     parser.add_argument("--episode_length", default=75, type=int)
     parser.add_argument("--fps", default=20, type=int)
 

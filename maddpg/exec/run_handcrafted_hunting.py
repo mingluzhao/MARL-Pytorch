@@ -17,17 +17,22 @@ from environment.multiAgentEnv import TransitMultiAgentChasing, ApplyActionForce
     IsCollision, PunishForOutOfBound, getPosFromAgentState, getVelFromAgentState, GetActionCost
 from environment.reward import *
 
-USE_CUDA = False  # torch.cuda.is_available()
+USE_CUDA = torch.cuda.is_available()
+
+# TODO: how to parallel run
 
 def run(config):
-    model_dir = Path('./models')#TODO / config.env_id / config.model_name
+    model_dir = Path('../models') / config.model_name
+    fileName = "model{}predators{}cost{}speed{}selfish".format(config.num_predators, config.cost, config.speed, config.selfish)
+
     if not model_dir.exists():
-        curr_run = 'run1'
+        name = fileName + 'run1'
     else:
         exst_run_nums = [int(str(folder.name).split('run')[1]) for folder in
-                         model_dir.iterdir() if str(folder.name).startswith('run')]
-        curr_run = 'run1' if len(exst_run_nums) == 0 else 'run%i' % (max(exst_run_nums) + 1)
-    run_dir = model_dir / curr_run
+                         model_dir.iterdir() if str(folder.name).startswith(fileName)]
+        name = fileName + 'run1' if len(exst_run_nums) == 0 else fileName +'run%i' % (max(exst_run_nums) + 1)
+
+    run_dir = model_dir / name
     log_dir = run_dir / 'logs'
     os.makedirs(log_dir)
     logger = SummaryWriter(str(log_dir))
@@ -89,7 +94,8 @@ def run(config):
     reshapeAction = ReshapeAction()
     getActionCost = GetActionCost(costActionRatio, reshapeAction, individualCost=True)
     getPredatorsAction = lambda action: [action[predatorID] for predatorID in predatorsID]
-    rewardPredatorWithActionCost = lambda state, action, nextState: np.array(rewardPredator(state, action, nextState)) - np.array(getActionCost(getPredatorsAction(action)))
+    rewardPredatorWithActionCost = lambda state, action, nextState: np.array(rewardPredator(state, action, nextState)) - \
+                                                                    np.array(getActionCost(getPredatorsAction(action)))
 
     rewardFunc = lambda state, action, nextState: \
         list(rewardPredatorWithActionCost(state, action, nextState)) + list(rewardPrey(state, action, nextState))
@@ -166,7 +172,7 @@ def run(config):
         for agentID, agentEpsReward in enumerate(epsRewards):
             logger.add_scalar('agent%i/tot_episode_rewards' % agentID, agentEpsReward, epsID)
 
-        if epsID % config.save_interval == 0:
+        if epsID % config.save_interval < config.n_rollout_threads:
             os.makedirs(run_dir / 'incremental', exist_ok=True)
             maddpg.save(run_dir / 'incremental' / ('model_ep%i.pt' % (epsID + 1)))
             maddpg.save(run_dir / 'model.pt')
@@ -178,14 +184,14 @@ def run(config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    # parser.add_argument("model_name", help="Name of directory to store " + "model/training contents")
+    parser.add_argument("num_predators", default=3, type=int, help="num_predators")
+    parser.add_argument("speed", default=1, type=float, help="speed")
+    parser.add_argument("cost", default=0, type=float, help="cost")
+    parser.add_argument("selfish", default=1, type=float, help="selfish")
 
-    parser.add_argument("--num_predators", default=3, type=int, help="num_predators")
-    parser.add_argument("--speed", default=1, type=float, help="speed")
-    parser.add_argument("--cost", default=0, type=float, help="cost")
-    parser.add_argument("--selfish", default=1, type=float, help="selfish")
-
+    parser.add_argument("--model_name", default= "CollectiveHunting", type = str, help="Name of directory to store " + "model/training contents")
     parser.add_argument("--seed", default=1, type=int, help="Random seed")
+
     parser.add_argument("--n_training_threads", default=6, type=int)
     parser.add_argument("--bufferSize", default=int(1e6), type=int)
     parser.add_argument("--maxTimeStep", default=75, type=int)
@@ -193,7 +199,7 @@ if __name__ == '__main__':
     parser.add_argument("--learnInterval", default=100, type=int)
     parser.add_argument("--minibatchSize", default=1024, type=int, help="Batch size for model training")
     parser.add_argument("--n_exploration_eps", default=25000, type=int)
-    parser.add_argument("--init_noise_scale", default=0.3, type=float)
+    parser.add_argument("--init_noise_scale", default=0.3, type=float) # not actually used in this scenario
     parser.add_argument("--final_noise_scale", default=0.0, type=float)
     parser.add_argument("--save_interval", default=10000, type=int)
     parser.add_argument("--lr", default=0.01, type=float)
@@ -202,6 +208,9 @@ if __name__ == '__main__':
     parser.add_argument("--adversary_alg", default="MADDPG", type=str, choices=['MADDPG', 'DDPG'])
     parser.add_argument("--discrete_action", action='store_true')
 
+    parser.add_argument("--n_rollout_threads", default=1, type=int)
+    parser.add_argument("--hidden_dim", default=128, type=int)
+    parser.add_argument("--hidden_layer_num", default=2, type=int)
     config = parser.parse_args()
 
     run(config)
