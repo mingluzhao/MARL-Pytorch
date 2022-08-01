@@ -19,8 +19,6 @@ from environment.reward import *
 
 USE_CUDA = torch.cuda.is_available()
 
-# TODO: how to parallel run
-
 def run(config):
     model_dir = Path('../models') / config.model_name
     fileName = "model{}predators{}cost{}speed{}selfish".format(config.num_predators, config.cost, config.speed, config.selfish)
@@ -132,6 +130,8 @@ def run(config):
     buffer = ReplayBuffer(config.bufferSize, numAgents, obsShape, actionDimList)
     totalRunTime = 0
     for epsID in range(config.maxEpisode):
+        if epsID % 1000 == 0:
+            print(epsID)
         state = reset()
         # obs.shape = (n_rollout_threads, nagent)(nobs), nobs differs per agent so not tensor
         maddpg.prep_rollouts(device='cpu')
@@ -184,10 +184,10 @@ def run(config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("num_predators", default=3, type=int, help="num_predators")
-    parser.add_argument("speed", default=1, type=float, help="speed")
-    parser.add_argument("cost", default=0, type=float, help="cost")
-    parser.add_argument("selfish", default=1, type=float, help="selfish")
+    parser.add_argument("--num_predators", default=3, type=int, help="num_predators")
+    parser.add_argument("--speed", default=1, type=float, help="speed")
+    parser.add_argument("--cost", default=0, type=float, help="cost")
+    parser.add_argument("--selfish", default=1, type=float, help="selfish")
 
     parser.add_argument("--model_name", default= "CollectiveHunting", type = str, help="Name of directory to store " + "model/training contents")
     parser.add_argument("--seed", default=1, type=int, help="Random seed")
