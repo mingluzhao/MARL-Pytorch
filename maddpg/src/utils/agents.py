@@ -58,7 +58,8 @@ class DDPGAgent(object):
         action = self.policyTrain(obs)
         if self.isDiscreteAction:
             if explore:
-                action = gumbel_softmax(action, hard=True)
+                # action = gumbel_softmax(action, hard=True)
+                action = gumbel_softmax(action, hard=False)# TODO: True
             else:
                 action = onehot_from_logits(action)
         else:  # continuous action

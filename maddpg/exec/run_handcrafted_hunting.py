@@ -33,7 +33,7 @@ def run(config):
     run_dir = model_dir / name
     log_dir = run_dir / 'logs'
     os.makedirs(log_dir)
-    logger = SummaryWriter(str(log_dir))
+    # logger = SummaryWriter(str(log_dir))
 
     torch.manual_seed(config.seed)
     np.random.seed(config.seed)
@@ -164,13 +164,13 @@ def run(config):
                 maddpg.prep_training(device='gpu') if USE_CUDA else maddpg.prep_training(device='cpu')
                 for agentID in range(numAgents):
                     sample = buffer.sample(config.minibatchSize, to_gpu=USE_CUDA)
-                    maddpg.update(sample, agentID, logger=logger)
+                    maddpg.update(sample, agentID, logger=None)
                 maddpg.update_all_targets()
                 maddpg.prep_rollouts(device='cpu')
         epsRewards = buffer.get_tot_rewards(config.maxTimeStep)
         
-        for agentID, agentEpsReward in enumerate(epsRewards):
-            logger.add_scalar('agent%i/tot_episode_rewards' % agentID, agentEpsReward, epsID)
+        # for agentID, agentEpsReward in enumerate(epsRewards):
+        #     logger.add_scalar('agent%i/tot_episode_rewards' % agentID, agentEpsReward, epsID)
 
         if epsID % config.save_interval < config.n_rollout_threads:
             os.makedirs(run_dir / 'incremental', exist_ok=True)
@@ -178,8 +178,8 @@ def run(config):
             maddpg.save(run_dir / 'model.pt')
 
     maddpg.save(run_dir / 'model.pt')
-    logger.export_scalars_to_json(str(log_dir / 'summary.json'))
-    logger.close()
+    # logger.export_scalars_to_json(str(log_dir / 'summary.json'))
+    # logger.close()
 
 
 if __name__ == '__main__':

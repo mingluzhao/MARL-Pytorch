@@ -92,16 +92,19 @@ class MADDPG(object):
         currentAgent.critic_optimizer.zero_grad()
         
         if self.algorithmTypes[agentID] == 'MADDPG':
-            if self.isDiscreteAction: # one-hot encode action
-                allTargetNextActions = [onehot_from_logits(targetPolicy(nextObs)) for targetPolicy, nextObs in zip(self.targetPolicies, allNextObs)]
-            else:
-                allTargetNextActions = [targetPolicy(nextObs) for targetPolicy, nextObs in zip(self.targetPolicies, allNextObs)]
+            # if self.isDiscreteAction: # one-hot encode action
+            #     allTargetNextActions = [onehot_from_logits(targetPolicy(nextObs)) for targetPolicy, nextObs in zip(self.targetPolicies, allNextObs)]
+            # else:
+            #     allTargetNextActions = [targetPolicy(nextObs) for targetPolicy, nextObs in zip(self.targetPolicies, allNextObs)]
+            # TODO: use one hot?
+            allTargetNextActions = [targetPolicy(nextObs) for targetPolicy, nextObs in zip(self.targetPolicies, allNextObs)]
             criticTargetInput = torch.cat((*allNextObs, *allTargetNextActions), dim=1)
         else:  # DDPG
-            if self.isDiscreteAction:
-                criticTargetInput = torch.cat((allNextObs[agentID], onehot_from_logits(currentAgent.policyTarget(allNextObs[agentID]))), dim=1)
-            else:
-                criticTargetInput = torch.cat((allNextObs[agentID], currentAgent.policyTarget(allNextObs[agentID])), dim=1)
+            criticTargetInput = torch.cat((allNextObs[agentID], currentAgent.policyTarget(allNextObs[agentID])), dim=1)
+            # if self.isDiscreteAction:
+            #     criticTargetInput = torch.cat((allNextObs[agentID], onehot_from_logits(currentAgent.policyTarget(allNextObs[agentID]))), dim=1)
+            # else:
+            #     criticTargetInput = torch.cat((allNextObs[agentID], currentAgent.policyTarget(allNextObs[agentID])), dim=1)
         criticUpdateTarget = (allRewards[agentID].view(-1, 1) + self.gamma * currentAgent.criticTarget(criticTargetInput) * 
                               (1 - allTerminal[agentID].view(-1, 1)))
 
@@ -126,7 +129,8 @@ class MADDPG(object):
             # correct since it removes the assumption of a deterministic policy for
             # DDPG. Regardless, discrete policies don't seem to learn properly without it.
             actorTrainOutput = currentAgent.policyTrain(allObs[agentID])
-            noisyTrainAction = gumbel_softmax(actorTrainOutput, hard=True)
+            noisyTrainAction = gumbel_softmax(actorTrainOutput, hard=False)
+            # noisyTrainAction = gumbel_softmax(actorTrainOutput, hard=True) # TODO original code = hard
         else:
             actorTrainOutput = currentAgent.policyTrain(allObs[agentID])
             noisyTrainAction = actorTrainOutput
