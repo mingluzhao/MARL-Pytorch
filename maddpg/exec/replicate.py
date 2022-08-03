@@ -101,15 +101,10 @@ def evaluate(config):
     rewardPredator = RewardPredatorsWithKillProb(predatorsID, preyGroupID, entitiesSizeList, isCollision, terminalCheck,
                                                  getPredatorPreyDistance,
                                                  getAgentsPercentageOfRewards, getCollisionPredatorReward)
+    rewardFunc = lambda state, action, nextState: \
+        list(rewardPredator(state, action, nextState)) + list(rewardPrey(state, action, nextState))
 
     reshapeAction = ReshapeAction()
-    getActionCost = GetActionCost(costActionRatio, reshapeAction, individualCost=True)
-    getPredatorsAction = lambda action: [action[predatorID] for predatorID in predatorsID]
-    rewardPredatorWithActionCost = lambda state, action, nextState: np.array(rewardPredator(state, action, nextState)) - \
-                                                                    np.array(getActionCost(getPredatorsAction(action)))
-
-    rewardFunc = lambda state, action, nextState: \
-        list(rewardPredatorWithActionCost(state, action, nextState)) + list(rewardPrey(state, action, nextState))
 
     reset = ResetMultiAgentChasing(numAgents, numBlocks)
     observeOneAgent = lambda agentID: Observe(agentID, predatorsID, preyGroupID, blocksID, getPosFromAgentState, getVelFromAgentState)
@@ -143,7 +138,7 @@ def evaluate(config):
             epsRewardAgentsTotal += np.sum(rewards[:numPredators])
 
             if isTerminal(nextState):
-                break
+                state = reset()
         epsRewardAgentsTotalList.append(epsRewardAgentsTotal)
 
     meanTrajReward = np.mean(epsRewardAgentsTotalList, axis=0)

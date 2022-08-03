@@ -15,6 +15,8 @@ from environment.multiAgentEnv import TransitMultiAgentChasing, ApplyActionForce
     ResetMultiAgentChasing, ReshapeAction, Observe, GetCollisionForce, IntegrateState, \
     IsCollision, PunishForOutOfBound, getPosFromAgentState, getVelFromAgentState, GetActionCost
 from environment.reward import *
+from visualize.drawDemo import *
+
 
 def run(config):
     numPredators = config.num_predators
@@ -100,23 +102,15 @@ def run(config):
     transit = TransitMultiAgentChasing(numEntities, reshapeAction, applyActionForce, applyEnvironForce, integrateState)
 
     isTerminal = lambda state: terminalCheck.terminal
-    initObsForParams = observe(reset())
-    obsShape = [initObsForParams[obsID].shape[0] for obsID in range(len(initObsForParams))]
-
-
     maddpg.prep_rollouts(device='cpu')
-    ifi = 1 / config.fps  # inter-frame interval
 
     epsRewardTot = []
-    for epsID in range(config.maxEpisodeToSample):
-        print("Episode %i of %i" % (epsID + 1, config.maxEpisodeToSample))
+    trajList = []
+    for epsID in range(config.numTrajToSample):
         state = reset()
-        # if config.save_gifs:
-        #     frames = []
-        #     frames.append(env.render('rgb_array')[0])
-        # env.render('human')
-
+        trajectory = []
         epsReward = np.zeros(numAgents)
+        
         for timeStep in range(config.maxTimeStep):
             obs = observe(state)
             # rearrange observations to be per agent, and convert to torch Variable
@@ -130,27 +124,17 @@ def run(config):
             actions = [ac[0] for ac in allActions]
 
             nextState = transit(state, actions)
-            nextObs = observe(nextState)
             rewards = rewardFunc(state, actions, nextState)
-            dones = isTerminal(state)
-            state = nextState
+            trajectory.append((state, actions, rewards, nextState))
 
             epsReward += rewards
+            
+            state = nextState
+            if isTerminal(state):
+                state = reset()
 
-            # if config.save_gifs:
-            #     frames.append(env.render('rgb_array')[0])
-            # calc_end = time.time()
-            # elapsed = calc_end - calc_start
-            # if elapsed < ifi:
-            #     time.sleep(ifi - elapsed)
-            # env.render('human')
-        # if config.save_gifs:
-        #     gif_num = 0
-        #     while (gif_path / ('%i_%i.gif' % (gif_num, ep_i))).exists():
-        #         gif_num += 1
-        #     imageio.mimsave(str(gif_path / ('%i_%i.gif' % (gif_num, ep_i))),
-        #                     frames, duration=ifi)
         epsRewardTot.append(epsReward)
+        trajList.append(trajectory)
 
     meanTrajReward = np.mean(epsRewardTot, axis=0)
     seTrajReward = np.std(epsRewardTot, axis=0) / np.sqrt(len(epsRewardTot) - 1)
@@ -159,19 +143,81 @@ def run(config):
     print("SE Eps Reward: ", seTrajReward)
 
 
+    # visualize ------------
+
+    if config.visualize:
+        BLACK = (0, 0, 0)
+        GRAY = (127, 127, 127)
+        WHITE = (255, 255, 255)
+        RED = (255, 0, 0)
+        GREEN = (0, 255, 0)
+
+        screenWidth = 700
+        screenHeight = 700
+        screen = pg.display.set_mode((screenWidth, screenHeight))
+        screenColor = BLACK
+        xBoundary = [0, 700]
+        yBoundary = [0, 700]
+        lineColor = WHITE
+        lineWidth = 4
+        drawBackground = DrawBackground(screen, screenColor, xBoundary, yBoundary, lineColor, lineWidth)
+
+        FPS = 10
+        numBlocks = 2
+        predatorColor = WHITE
+        preyColor = GREEN
+        blockColor = GRAY
+        circleColorSpace = [predatorColor] * numPredators + [preyColor] * numPrey + [blockColor] * numBlocks
+        viewRatio = 1.5
+        preySize = int(0.05 * screenWidth / (2 * viewRatio))
+        predatorSize = int(0.075 * screenWidth / (3 * viewRatio)) # without boarder
+        blockSize = int(0.2 * screenWidth / (2 * viewRatio))
+        circleSizeSpace = [predatorSize] * numPredators + [preySize] * numPrey + [blockSize] * numBlocks
+        positionIndex = [0, 1]
+        agentIdsToDraw = list(range(numPredators + numPrey + numBlocks))
+
+        imageSavePath = os.path.join(dirName, '..', 'trajectories', model_name)
+        if not os.path.exists(imageSavePath):
+            os.makedirs(imageSavePath)
+        imageFolderName = str('forDemo')
+        saveImageDir = os.path.join(os.path.join(imageSavePath, imageFolderName))
+        if not os.path.exists(saveImageDir):
+            os.makedirs(saveImageDir)
+
+        outsideCircleColor = [RED] * numPredators
+        outsideCircleSize = int(predatorSize * 1.5)
+        drawCircleOutside = DrawCircleOutside(screen, predatorsID, positionIndex,
+                                              outsideCircleColor, outsideCircleSize, viewRatio= viewRatio)
+
+        drawState = DrawState(FPS, screen, circleColorSpace, circleSizeSpace, agentIdsToDraw,
+                              positionIndex, config.saveImage, saveImageDir, preyGroupID, predatorsID,
+                              drawBackground, drawCircleOutside=drawCircleOutside, viewRatio= viewRatio)
+
+        # MDP Env
+        stateID = 0
+        nextStateID = 3
+        predatorSizeForCheck = 0.075
+        preySizeForCheck = 0.05
+        checkStatus = CheckStatus(predatorsID, preyGroupID, isCollision, predatorSizeForCheck, preySizeForCheck, stateID, nextStateID)
+        chaseTrial = ChaseTrialWithKillNotation(stateID, drawState, checkStatus)
+        [chaseTrial(trajectory) for trajectory in np.array(trajList[:20])]
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("num_predators", default=6, type=int, help="num_predators")
-    parser.add_argument("speed", default=1, type=float, help="speed")
-    parser.add_argument("cost", default=0, type=float, help="cost")
-    parser.add_argument("selfish", default=1, type=float, help="selfish")
+    parser.add_argument("--num_predators", default=6, type=int, help="num_predators")
+    parser.add_argument("--speed", default=1, type=float, help="speed")
+    parser.add_argument("--cost", default=0, type=float, help="cost")
+    parser.add_argument("--selfish", default=10000, type=float, help="selfish")
 
+    parser.add_argument("--visualize", default=1, type=int)
+    parser.add_argument("--saveImage", default=0, type=int)
     parser.add_argument("--run_num", default=1, type=int)
     parser.add_argument("--incremental", default=None, type=int,
                         help="Load incremental policy from given episode " + "rather than final policy")
     parser.add_argument("--maxTimeStep", default=75, type=int)
-    parser.add_argument("--maxEpisodeToSample", default=100, type=int)
+    parser.add_argument("--numTrajToSample", default=100, type=int)
 
     parser.add_argument("--model_name", default= "CollectiveHunting", type = str, help="Name of directory to store " + "model/training contents")
     parser.add_argument("--seed", default=1, type=int, help="Random seed")
