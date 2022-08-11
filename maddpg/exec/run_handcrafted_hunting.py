@@ -184,10 +184,10 @@ def run(config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num_predators", default=3, type=int, help="num_predators")
-    parser.add_argument("--speed", default=1, type=float, help="speed")
-    parser.add_argument("--cost", default=0, type=float, help="cost")
-    parser.add_argument("--selfish", default=1, type=float, help="selfish")
+    parser.add_argument("num_predators", default=3, type=int, help="num_predators")
+    parser.add_argument("speed", default=1, type=float, help="speed")
+    parser.add_argument("cost", default=0, type=float, help="cost")
+    parser.add_argument("selfish", default=1, type=float, help="selfish")
 
     parser.add_argument("--model_name", default= "CollectiveHunting", type = str, help="Name of directory to store " + "model/training contents")
     parser.add_argument("--seed", default=1, type=int, help="Random seed")
