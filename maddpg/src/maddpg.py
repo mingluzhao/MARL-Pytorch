@@ -49,7 +49,7 @@ class MADDPG(object):
     def targetPolicies(self):
         return [a.policyTarget for a in self.agents]
 
-    def scaleNoise(self, scale):
+    def scaleNoise(self, scale): # TODO: only for not discrete actions
         """
         Scale noise for each agent
         Inputs:
@@ -97,7 +97,7 @@ class MADDPG(object):
             # else:
             #     allTargetNextActions = [targetPolicy(nextObs) for targetPolicy, nextObs in zip(self.targetPolicies, allNextObs)]
             # TODO: use one hot?
-            allTargetNextActions = [targetPolicy(nextObs) for targetPolicy, nextObs in zip(self.targetPolicies, allNextObs)]
+            allTargetNextActions = [targetPolicy(nextObs) for targetPolicy, nextObs in zip(self.targetPolicies, allNextObs)] # TODO: act by target noisy?
             criticTargetInput = torch.cat((*allNextObs, *allTargetNextActions), dim=1)
         else:  # DDPG
             criticTargetInput = torch.cat((allNextObs[agentID], currentAgent.policyTarget(allNextObs[agentID])), dim=1)

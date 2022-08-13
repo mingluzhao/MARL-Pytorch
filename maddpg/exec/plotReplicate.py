@@ -16,8 +16,9 @@ sheepMaxSpeedOriginal = 1.3
 
 def main():
     resultPath = os.path.join(dirName, '..', 'evalResults')
-    allResultLoc = os.path.join(resultPath, 'evalAll.pkl')
+    allResultLoc = os.path.join(resultPath, 'evalAll5.pkl')
     resultDF = loadFromPickle(allResultLoc)
+    print(resultDF)
 
     independentVariables = dict()
     independentVariables['num_predators'] = [3, 4, 5, 6]
@@ -53,7 +54,7 @@ def main():
 
     figure.text(x=0.03, y=0.5, s='Mean Episode Kill', ha='center', va='center', rotation=90)
     plt.suptitle('MADDPG Evaluate predatorSelfishness/ preySpeed/ actionCost')
-    plt.savefig(os.path.join(resultPath, 'evalRewardWithKillProbAndDistSensitiveNoBiteRewKillInfo_killNum_allcond_regroup'))
+    plt.savefig(os.path.join(resultPath, 'evalRewardWithKillProbAndDistSensitiveNoBiteRewKillInfo5_killNum_allcond_regroup'))
     plt.show()
     plt.close()
 

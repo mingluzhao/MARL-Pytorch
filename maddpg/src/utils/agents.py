@@ -11,7 +11,7 @@ class DDPGAgent(object):
     General class for DDPG agents (policy, critic, target policy, target
     critic, exploration noise)
     """
-    def __init__(self, dimPolicyInput, dimPolicyOutput, dimCriticInput, layerNum = 3, hiddenDim=64,
+    def __init__(self, dimPolicyInput, dimPolicyOutput, dimCriticInput, layerNum = 2, hiddenDim=128,
                  lr=0.01, isDiscreteAction=True):
         """
         Inputs:
@@ -30,10 +30,10 @@ class DDPGAgent(object):
 
         self.policy_optimizer = Adam(self.policyTrain.parameters(), lr=lr)
         self.critic_optimizer = Adam(self.criticTrain.parameters(), lr=lr)
-        if not isDiscreteAction:
-            self.exploration = OUNoise(dimPolicyOutput)
+        if isDiscreteAction:
+            self.exploration = None  # epsilon for eps-greedy TODO: not used for discrete actions
         else:
-            self.exploration = 0.3  # epsilon for eps-greedy TODO: not used for discrete actions
+            self.exploration = OUNoise(dimPolicyOutput)
         self.isDiscreteAction = isDiscreteAction
 
     def resetNoise(self):
@@ -41,10 +41,7 @@ class DDPGAgent(object):
             self.exploration.reset()
 
     def scaleNoise(self, scale):
-        if self.isDiscreteAction:
-            self.exploration = scale
-        else:
-            self.exploration.scale = scale
+        self.exploration.scale = scale
 
     def act(self, obs, explore=False):
         """
@@ -57,7 +54,7 @@ class DDPGAgent(object):
         """
         action = self.policyTrain(obs)
         if self.isDiscreteAction:
-            if explore:
+            if explore: # TODO: always true for training
                 # action = gumbel_softmax(action, hard=True)
                 action = gumbel_softmax(action, hard=False)# TODO: True
             else:

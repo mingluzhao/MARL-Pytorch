@@ -78,8 +78,9 @@ def run(config):
         maddpg.prep_rollouts(device='cpu')
 
         explr_pct_remaining = max(0, config.n_exploration_eps - ep_i) / config.n_exploration_eps
-        maddpg.scaleNoise(config.final_noise_scale + (config.init_noise_scale - config.final_noise_scale) * explr_pct_remaining)
-        maddpg.resetNoise()
+        if not isDiscreteAction:
+            maddpg.scaleNoise(config.final_noise_scale + (config.init_noise_scale - config.final_noise_scale) * explr_pct_remaining)
+            maddpg.resetNoise()
 
         for et_i in range(config.maxTimeStep):
             # rearrange observations to be per agent, and convert to torch Variable

@@ -1,0 +1,6 @@
+- use one hot for soft max for policy? this code uses one hot but original code used softmax (fixed to softmax for run3 but result same)
+- removed batch norm (fixed for run4 but result bad)
+- layer size (fixed for run 5)
+- noise without epsilon (run 6)
+- critic target input is the **noisy** target next action? (to do)
+-

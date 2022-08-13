@@ -5,8 +5,8 @@ class MLPNetwork(nn.Module):
     """
     MLP network (can be used as value or policy)
     """
-    def __init__(self, inputDim, outputDim, hiddenDim=64, layerNum = 3, nonlin=F.relu,
-                 constrainOutput=False, normInput=True, isDiscreteAction=True):
+    def __init__(self, inputDim, outputDim, hiddenDim=128, layerNum = 2, nonlin=F.relu,
+                 constrainOutput=False, normInput=False, isDiscreteAction=True): # TODO changed normInput to False
         """
         Inputs:
             inputDim (int): Number of dimensions in input
@@ -25,7 +25,7 @@ class MLPNetwork(nn.Module):
         
         self.fc_first = nn.Linear(inputDim, hiddenDim)
         self.fc_last = nn.Linear(hiddenDim, outputDim)
-        self.fcs_middle = [nn.Linear(hiddenDim, hiddenDim) for _ in range(layerNum-2)]
+        self.fcs_middle = [nn.Linear(hiddenDim, hiddenDim) for _ in range(layerNum-1)]
         self.nonlin = nonlin
         
         if constrainOutput and not isDiscreteAction: # initialize small to prevent saturation
