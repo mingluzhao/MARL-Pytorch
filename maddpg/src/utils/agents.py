@@ -19,19 +19,17 @@ class DDPGAgent(object):
             dimPolicyOutput (int): number of dimensions for policy output
             dimCriticInput (int): number of dimensions for critic input
         """
-        self.policyTrain = MLPNetwork(dimPolicyInput, dimPolicyOutput, layerNum = layerNum,
-                                      hiddenDim=hiddenDim, constrainOutput=True, isDiscreteAction=isDiscreteAction)
-        self.criticTrain = MLPNetwork(dimCriticInput, 1, layerNum = layerNum, hiddenDim=hiddenDim, constrainOutput=False)
-        self.policyTarget = MLPNetwork(dimPolicyInput, dimPolicyOutput, layerNum = layerNum,
-                                       hiddenDim=hiddenDim, constrainOutput=True, isDiscreteAction=isDiscreteAction)
-        self.criticTarget = MLPNetwork(dimCriticInput, 1, layerNum = layerNum, hiddenDim=hiddenDim, constrainOutput=False)
+        self.policyTrain = MLPNetwork(dimPolicyInput, dimPolicyOutput, layerNum=layerNum, hiddenDim=hiddenDim)
+        self.criticTrain = MLPNetwork(dimCriticInput, 1, layerNum=layerNum, hiddenDim=hiddenDim)
+        self.policyTarget = MLPNetwork(dimPolicyInput, dimPolicyOutput, layerNum=layerNum, hiddenDim=hiddenDim)
+        self.criticTarget = MLPNetwork(dimCriticInput, 1, layerNum=layerNum, hiddenDim=hiddenDim)
         hard_update(self.policyTarget, self.policyTrain)
         hard_update(self.criticTarget, self.criticTrain)
 
         self.policy_optimizer = Adam(self.policyTrain.parameters(), lr=lr)
         self.critic_optimizer = Adam(self.criticTrain.parameters(), lr=lr)
         if isDiscreteAction:
-            self.exploration = None  # epsilon for eps-greedy TODO: not used for discrete actions
+            self.exploration = None  # not used for discrete actions
         else:
             self.exploration = OUNoise(dimPolicyOutput)
         self.isDiscreteAction = isDiscreteAction
@@ -54,15 +52,14 @@ class DDPGAgent(object):
         """
         action = self.policyTrain(obs)
         if self.isDiscreteAction:
-            if explore: # TODO: always true for training
+            if explore: # always true for training
                 # action = gumbel_softmax(action, hard=True)
                 action = gumbel_softmax(action, hard=False)# TODO: True
             else:
                 action = onehot_from_logits(action)
         else:  # continuous action
             if explore:
-                action += Variable(Tensor(self.exploration.noise()),
-                                   requires_grad=False)
+                action += Variable(Tensor(self.exploration.noise()), requires_grad=False)
             action = action.clamp(-1, 1)
         return action
 

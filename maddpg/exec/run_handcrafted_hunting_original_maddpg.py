@@ -7,11 +7,13 @@ os.environ['KMP_DUPLICATE_LIB_OK']='True'
 dirName = os.path.dirname(__file__)
 sys.path.append(os.path.join(dirName, '..'))
 sys.path.append(os.path.join(dirName, '..', '..'))
+import numpy as np
+from gym.spaces import Box, Discrete
 from pathlib import Path
 from torch.autograd import Variable
-from tensorboardX import SummaryWriter
-from maddpg.src.utils.buffer import ReplayBuffer
-from maddpg.src.maddpg import MADDPG
+from master.utils.buffer import ReplayBuffer
+from master.algorithms.maddpg import MADDPG
+
 from environment.multiAgentEnv import TransitMultiAgentChasing, ApplyActionForce, ApplyEnvironForce, \
     ResetMultiAgentChasing, ReshapeAction, Observe, GetCollisionForce, IntegrateState, \
     IsCollision, PunishForOutOfBound, getPosFromAgentState, getVelFromAgentState, GetActionCost
@@ -194,6 +196,9 @@ if __name__ == '__main__':
     parser.add_argument("--maxEpisode", default=60000, type=int)
     parser.add_argument("--learnInterval", default=100, type=int)
     parser.add_argument("--minibatchSize", default=1024, type=int, help="Batch size for model training")
+    parser.add_argument("--n_exploration_eps", default=25000, type=int)
+    parser.add_argument("--init_noise_scale", default=0.3, type=float) # not actually used in this scenario
+    parser.add_argument("--final_noise_scale", default=0.0, type=float)
     parser.add_argument("--save_interval", default=10000, type=int)
     parser.add_argument("--lr", default=0.01, type=float)
     parser.add_argument("--tau", default=0.01, type=float)

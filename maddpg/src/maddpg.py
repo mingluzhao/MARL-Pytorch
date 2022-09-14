@@ -1,5 +1,4 @@
 import torch
-# from gym.spaces import Box, Discrete
 from maddpg.src.utils.misc import soft_update, average_gradients, onehot_from_logits, gumbel_softmax
 from maddpg.src.utils.agents import DDPGAgent
 
@@ -10,8 +9,8 @@ class MADDPG(object):
     """
     Wrapper class for DDPG-esque (i.e. also MADDPG) agents in multi-agent task
     """
-    def __init__(self, agentsInitParams, algorithmTypes,hiddenDimList, isDiscreteAction,
-                 gamma=0.95, tau=0.01, lr=0.01 ):
+    def __init__(self, agentsInitParams, algorithmTypes, hiddenDimList, isDiscreteAction,
+                 gamma=0.95, tau=0.01, lr=0.01):
         """
         Inputs:
             agentsInitParams (list of dict): List of dicts with parameters to initialize each agent
@@ -27,9 +26,8 @@ class MADDPG(object):
         """
         self.numAgents = len(algorithmTypes)
         self.algorithmTypes = algorithmTypes
-        self.agents = [DDPGAgent(lr=lr, isDiscreteAction=isDiscreteAction, layerNum = len(hiddenDimList),
-                                 hiddenDim=hiddenDimList[0], **params)
-                       for params in agentsInitParams]
+        self.agents = [DDPGAgent(lr=lr, isDiscreteAction=isDiscreteAction, layerNum=len(hiddenDimList),
+                                 hiddenDim=hiddenDimList[0], **params) for params in agentsInitParams]
         self.agentsInitParams = agentsInitParams
         self.gamma = gamma
         self.tau = tau
@@ -49,7 +47,7 @@ class MADDPG(object):
     def targetPolicies(self):
         return [a.policyTarget for a in self.agents]
 
-    def scaleNoise(self, scale): # TODO: only for not discrete actions
+    def scaleNoise(self, scale): # only for not discrete actions
         """
         Scale noise for each agent
         Inputs:
@@ -58,11 +56,11 @@ class MADDPG(object):
         for agent in self.agents:
             agent.scaleNoise(scale)
 
-    def resetNoise(self):
+    def resetNoise(self):# only for not discrete actions
         for agent in self.agents:
             agent.resetNoise()
 
-    def act(self, observations, explore=False):
+    def act(self, observations, explore=True):
         """
         Take a step forward in environment with all agents
         Inputs:
@@ -96,15 +94,18 @@ class MADDPG(object):
             #     allTargetNextActions = [onehot_from_logits(targetPolicy(nextObs)) for targetPolicy, nextObs in zip(self.targetPolicies, allNextObs)]
             # else:
             #     allTargetNextActions = [targetPolicy(nextObs) for targetPolicy, nextObs in zip(self.targetPolicies, allNextObs)]
-            # TODO: use one hot?
-            allTargetNextActions = [targetPolicy(nextObs) for targetPolicy, nextObs in zip(self.targetPolicies, allNextObs)] # TODO: act by target noisy?
-            criticTargetInput = torch.cat((*allNextObs, *allTargetNextActions), dim=1)
+
+            allTargetNextOutputs = [targetPolicy(nextObs) for targetPolicy, nextObs in zip(self.targetPolicies, allNextObs)]
+            allTargetNextActionsNoisy = [gumbel_softmax(actionOutput, hard=False) for actionOutput in allTargetNextOutputs]
+
+            criticTargetInput = torch.cat((*allNextObs, *allTargetNextActionsNoisy), dim=1)
         else:  # DDPG
-            criticTargetInput = torch.cat((allNextObs[agentID], currentAgent.policyTarget(allNextObs[agentID])), dim=1)
-            # if self.isDiscreteAction:
-            #     criticTargetInput = torch.cat((allNextObs[agentID], onehot_from_logits(currentAgent.policyTarget(allNextObs[agentID]))), dim=1)
-            # else:
-            #     criticTargetInput = torch.cat((allNextObs[agentID], currentAgent.policyTarget(allNextObs[agentID])), dim=1)
+            if self.isDiscreteAction:
+                criticTargetInput = torch.cat(
+                    (allNextObs[agentID], onehot_from_logits(currentAgent.policyTarget(allNextObs[agentID]))), dim=1)
+            else:
+                criticTargetInput = torch.cat((allNextObs[agentID], currentAgent.policyTarget(allNextObs[agentID])),
+                                              dim=1)
         criticUpdateTarget = (allRewards[agentID].view(-1, 1) + self.gamma * currentAgent.criticTarget(criticTargetInput) * 
                               (1 - allTerminal[agentID].view(-1, 1)))
 

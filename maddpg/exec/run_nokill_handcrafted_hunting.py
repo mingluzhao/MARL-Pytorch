@@ -12,10 +12,11 @@ from torch.autograd import Variable
 from tensorboardX import SummaryWriter
 from maddpg.src.utils.buffer import ReplayBuffer
 from maddpg.src.maddpg import MADDPG
-from environment.multiAgentEnv import TransitMultiAgentChasing, ApplyActionForce, ApplyEnvironForce, \
-    ResetMultiAgentChasing, ReshapeAction, Observe, GetCollisionForce, IntegrateState, \
+from environment.multiAgentEnvNoKill import TransitMultiAgentChasing, ApplyActionForce, ApplyEnvironForce, \
+    ResetMultiAgentChasing, ReshapeAction, RewardSheep, RewardWolf, Observe, GetCollisionForce, IntegrateState, \
     IsCollision, PunishForOutOfBound, getPosFromAgentState, getVelFromAgentState, GetActionCost
-from environment.reward import *
+import numpy as np
+
 
 USE_CUDA = torch.cuda.is_available()
 
@@ -47,14 +48,12 @@ def run(config):
 
     numPrey = 1
     numBlocks = 2
-    killReward = 10
-    killProportion = 0.2
-    biteReward = 0.0
 
     print("train: {} predators, {} prey, {} blocks, {} episodes with {} steps each eps, preySpeed: {}x, cost: {}, selfish: {}".
           format(numPredators, numPrey, numBlocks, config.maxEpisode, config.maxTimeStep, preySpeedMultiplier, costActionRatio, selfishIndex))
 
 ### Hunting environment
+
     numAgents = numPredators + numPrey
     numEntities = numAgents + numBlocks
     predatorsID = list(range(numPredators))
@@ -75,28 +74,21 @@ def run(config):
     entitiesMovableList = [True] * numAgents + [False] * numBlocks
     massList = [1.0] * numEntities
 
-    collisionReward = 10 # originalPaper = 10*3
+    collisionReward = 10
     isCollision = IsCollision(getPosFromAgentState)
     punishForOutOfBound = PunishForOutOfBound()
-    rewardPrey = RewardPrey(predatorsID, preyGroupID, entitiesSizeList, getPosFromAgentState, isCollision,
-                              punishForOutOfBound, collisionPunishment = collisionReward)
+    rewardSheep = RewardSheep(predatorsID, preyGroupID, entitiesSizeList, getPosFromAgentState, isCollision,
+                              punishForOutOfBound, collisionPunishment=collisionReward)
 
-    collisionDist = predatorSize + preySize
-    getAgentsPercentageOfRewards = GetAgentsPercentageOfRewards(selfishIndex, collisionDist)
-    terminalCheck = TerminalCheck()
-    getCollisionPredatorReward = GetCollisionPredatorReward(biteReward, killReward, killProportion, sampleFromDistribution, terminalCheck)
-    getPredatorPreyDistance = GetPredatorPreyDistance(computeVectorNorm, getPosFromAgentState)
-    rewardPredator = RewardPredatorsWithKillProb(predatorsID, preyGroupID, entitiesSizeList, isCollision, terminalCheck, getPredatorPreyDistance,
-                 getAgentsPercentageOfRewards, getCollisionPredatorReward)
-
+    rewardWolf = RewardWolf(predatorsID, preyGroupID, entitiesSizeList, isCollision, collisionReward, selfishIndex)
     reshapeAction = ReshapeAction()
     getActionCost = GetActionCost(costActionRatio, reshapeAction, individualCost=True)
-    getPredatorsAction = lambda action: [action[predatorID] for predatorID in predatorsID]
-    rewardPredatorWithActionCost = lambda state, action, nextState: np.array(rewardPredator(state, action, nextState)) - \
-                                                                    np.array(getActionCost(getPredatorsAction(action)))
+    getWolvesAction = lambda action: [action[wolfID] for wolfID in predatorsID]
+    rewardWolfWithActionCost = lambda state, action, nextState: np.array(
+        rewardWolf(state, action, nextState)) - np.array(getActionCost(getWolvesAction(action)))
 
     rewardFunc = lambda state, action, nextState: \
-        list(rewardPredatorWithActionCost(state, action, nextState)) + list(rewardPrey(state, action, nextState))
+        list(rewardWolfWithActionCost(state, action, nextState)) + list(rewardSheep(state, action, nextState))
 
     reset = ResetMultiAgentChasing(numAgents, numBlocks)
     observeOneAgent = lambda agentID: Observe(agentID, predatorsID, preyGroupID, blocksID, getPosFromAgentState,
@@ -105,12 +97,13 @@ def run(config):
 
     getCollisionForce = GetCollisionForce()
     applyActionForce = ApplyActionForce(predatorsID, preyGroupID, entitiesMovableList)
-    applyEnvironForce = ApplyEnvironForce(numEntities, entitiesMovableList, entitiesSizeList, getCollisionForce, getPosFromAgentState)
+    applyEnvironForce = ApplyEnvironForce(numEntities, entitiesMovableList, entitiesSizeList,
+                                          getCollisionForce, getPosFromAgentState)
     integrateState = IntegrateState(numEntities, entitiesMovableList, massList,
                                     entityMaxSpeedList, getVelFromAgentState, getPosFromAgentState)
     transit = TransitMultiAgentChasing(numEntities, reshapeAction, applyActionForce, applyEnvironForce, integrateState)
 
-    isTerminal = lambda state: terminalCheck.terminal
+    isTerminal = lambda state: False
     initObsForParams = observe(reset())
     obsShape = [initObsForParams[obsID].shape[0] for obsID in range(len(initObsForParams))]
 
@@ -180,12 +173,12 @@ def run(config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("num_predators", default=3, type=int, help="num_predators")
-    parser.add_argument("speed", default=1, type=float, help="speed")
-    parser.add_argument("cost", default=0, type=float, help="cost")
-    parser.add_argument("selfish", default=1, type=float, help="selfish")
+    parser.add_argument("--num_predators", default=3, type=int, help="num_predators")
+    parser.add_argument("--speed", default=1, type=float, help="speed")
+    parser.add_argument("--cost", default=0, type=float, help="cost")
+    parser.add_argument("--selfish", default=1, type=float, help="selfish")
 
-    parser.add_argument("--model_name", default= "CollectiveHunting", type = str, help="Name of directory to store " + "model/training contents")
+    parser.add_argument("--model_name", default= "NoKillHunting", type = str, help="Name of directory to store " + "model/training contents")
     parser.add_argument("--seed", default=1, type=int, help="Random seed")
 
     parser.add_argument("--n_training_threads", default=6, type=int)
