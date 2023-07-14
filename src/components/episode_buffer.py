@@ -86,6 +86,7 @@ class EpisodeBatch:
 
     def update(self, data, bs=slice(None), ts=slice(None), mark_filled=True):
         slices = self._parse_slices((bs, ts))
+        print("Update called!")
         for k, v in data.items():
             if k in self.data.transition_data:
                 target = self.data.transition_data
@@ -101,7 +102,10 @@ class EpisodeBatch:
 
             dtype = self.scheme[k].get("dtype", th.float32)
             v = th.tensor(v, dtype=dtype, device=self.device)
+            print("before", v, k, v.shape)
             self._check_safe_view(v, target[k][_slices])
+            #print("target", target)
+            #print("in episode_buffer", v, k)
             target[k][_slices] = v.view_as(target[k][_slices])
 
             if k in self.preprocess:
@@ -112,6 +116,7 @@ class EpisodeBatch:
                 target[new_k][_slices] = v.view_as(target[new_k][_slices])
 
     def _check_safe_view(self, v, dest):
+        print("reshape to", dest.shape)
         idx = len(v.shape) - 1
         for s in dest.shape[::-1]:
             if v.shape[idx] != s:
@@ -212,7 +217,9 @@ class ReplayBuffer(EpisodeBatch):
         self.episodes_in_buffer = 0
 
     def insert_episode_batch(self, ep_batch):
+        print("insert episode batch called !! -------------------------")
         if self.buffer_index + ep_batch.batch_size <= self.buffer_size:
+            print("self.buffer_index + batch_size <= buffer.size")
             self.update(ep_batch.data.transition_data,
                         slice(self.buffer_index, self.buffer_index + ep_batch.batch_size),
                         slice(0, ep_batch.max_seq_length),

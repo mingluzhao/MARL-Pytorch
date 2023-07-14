@@ -93,6 +93,7 @@ def evaluate_sequential(args, runner):
     runner.close_env()
 
 
+
 def run_sequential(args, logger):
     # Init runner so we can get env info
     runner = r_REGISTRY[args.runner](args=args, logger=logger)
@@ -103,6 +104,8 @@ def run_sequential(args, logger):
     args.n_actions = env_info["n_actions"]
     args.state_shape = env_info["state_shape"]
     args.obs_shape = env_info["obs_shape"]
+
+    print("Printinging env_info", env_info)
 
     # Default/Base scheme
     scheme = {
@@ -115,6 +118,7 @@ def run_sequential(args, logger):
         "terminated": {"vshape": (1,), "dtype": th.uint8},
         "roles": {"vshape": (1,), "group": "agents", "dtype": th.long}
     }
+    print("Printing Scheme", scheme)
     groups = {
         "agents": args.n_agents
     }
@@ -186,6 +190,8 @@ def run_sequential(args, logger):
 
         # Run for a whole episode at a time
         episode_batch = runner.run(test_mode=False)
+        print("Runner fun finished in sequential run. =======================")
+        print("Printing episode_batch", episode_batch)
         buffer.insert_episode_batch(episode_batch)
 
         if buffer.can_sample(args.batch_size):
@@ -212,6 +218,11 @@ def run_sequential(args, logger):
             last_test_T = runner.t_env
             for _ in range(n_test_runs):
                 runner.run(test_mode=True)
+                # for displaying learned policies
+                time.sleep(0.1)
+                runner.env.render()
+                continue
+
 
         if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
             model_save_time = runner.t_env

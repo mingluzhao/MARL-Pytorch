@@ -13,6 +13,7 @@ import yaml
 
 from run import run
 
+# use SACRED to manage cofigurations and experiements
 SETTINGS['CAPTURE_MODE'] = "fd" # set to "no" if you want to see stdout/stderr in console
 logger = get_logger()
 
@@ -29,7 +30,7 @@ def my_main(_run, _config, _log):
     config = config_copy(_config)
     np.random.seed(config["seed"])
     th.manual_seed(config["seed"])
-    config['env_args']['seed'] = config["seed"]
+    #config['env_args']['seed'] = config["seed"]
 
     # run the framework
     run(_run, config, _log)
@@ -83,17 +84,19 @@ if __name__ == '__main__':
     # Load algorithm and env base configs
     env_config = _get_config(params, "--env-config", "envs")
     alg_config = _get_config(params, "--config", "algs")
+ 
     # config_dict = {**config_dict, **env_config, **alg_config}
     config_dict = recursive_dict_update(config_dict, env_config)
     config_dict = recursive_dict_update(config_dict, alg_config)
-
+    
     # now add all the config to sacred
     ex.add_config(config_dict)
-
+    
     # Save to disk by default for sacred
     logger.info("Saving to FileStorageObserver in results/sacred.")
     file_obs_path = os.path.join(results_path, "sacred")
     ex.observers.append(FileStorageObserver.create(file_obs_path))
 
+    # This will execute the my_main function, which was marked as the main function for the Sacred experiment using the @ex.main decorator.
     ex.run_commandline(params)
 
