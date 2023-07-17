@@ -105,7 +105,6 @@ def run_sequential(args, logger):
     args.state_shape = env_info["state_shape"]
     args.obs_shape = env_info["obs_shape"]
 
-    print("Printinging env_info", env_info)
 
     # Default/Base scheme
     scheme = {
@@ -118,7 +117,7 @@ def run_sequential(args, logger):
         "terminated": {"vshape": (1,), "dtype": th.uint8},
         "roles": {"vshape": (1,), "group": "agents", "dtype": th.long}
     }
-    print("Printing Scheme", scheme)
+   
     groups = {
         "agents": args.n_agents
     }
@@ -190,8 +189,6 @@ def run_sequential(args, logger):
 
         # Run for a whole episode at a time
         episode_batch = runner.run(test_mode=False)
-        print("Runner fun finished in sequential run. =======================")
-        print("Printing episode_batch", episode_batch)
         buffer.insert_episode_batch(episode_batch)
 
         if buffer.can_sample(args.batch_size):

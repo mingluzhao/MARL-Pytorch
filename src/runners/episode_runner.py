@@ -74,7 +74,7 @@ class EpisodeRunner:
         return obs
 
     def run(self, test_mode=False, t_episode=0):
-        print("run is called!!")
+       
         obs = self.reset()
         #print("observation", obs)
         state = np.concatenate(obs, axis=0).astype(
@@ -111,11 +111,11 @@ class EpisodeRunner:
         #     all_roles = []
 
         while not terminated:
-            print("episode number", episode_step, "---------")
+            # print("episode number", episode_step, "---------")
 
-            if self.t > 1000:
-                self.env.render()
-                time.sleep(0.1)
+           
+            self.env.render()
+            time.sleep(0.1)
 
             pre_transition_data = {
                 "state": [state], # get global state
@@ -135,8 +135,6 @@ class EpisodeRunner:
             actions, roles, role_avail_actions = self.mac.select_actions(self.batch, t_ep=self.t,
                                                                          t_env=self.t_env, test_mode=test_mode)
             self.batch.update({"role_avail_actions": role_avail_actions.tolist()}, ts=self.t)
-            print("pre_transition and roles updated.")
-            print("roles", roles)
 
             # if self.verbose:
             #     roles_detach = roles.detach().cpu().squeeze().numpy()
@@ -187,13 +185,11 @@ class EpisodeRunner:
             # actions_int = [int(a) for a in actions[0]]
             # ac = np.eye(5)[np.array(actions_int)]
             # print(ac)
-            print(actions[0], new_actions)
+
 
             obs_, reward, done, env_info = self.env.step(new_actions[0])
             terminated = any(done)
-            print("envrionment step")
-            print("observation", obs_)
-            print("reward", reward)
+            
             #print(episode_return) ### change the problem here
             episode_return += sum(reward)
             #print(sum(reward))
@@ -207,9 +203,8 @@ class EpisodeRunner:
                 "reward": [(sum(reward),)],
                 "terminated": [(episode_step >= self.episode_limit,)],
             }
-            print("terminated value:", terminated)
+            
 
-            print("post transition data is updating.")
             self.batch.update(post_transition_data, ts=self.t)
 
             episode_step += 1
@@ -221,10 +216,7 @@ class EpisodeRunner:
             # zero pad the last obs
             obs[-1] = np.pad(obs[-1], (0, 2), 'constant', constant_values=(0))
             score += sum(reward)
-            print("One episode ended.-------------")
-            
-
-        print("last data is being updated.")
+         
         last_data = {
             "state": [state],
             "avail_actions": [[1, 1, 1, 1, 1] for i in range(n_agents)],
@@ -243,12 +235,12 @@ class EpisodeRunner:
         actions, roles, role_avail_actions = self.mac.select_actions(self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
         self.batch.update({"actions": actions, "roles": roles, "role_avail_actions": role_avail_actions}, ts=self.t)
 
-        print("update finished.")
+       
 
         cur_stats = self.test_stats if test_mode else self.train_stats
         cur_returns = self.test_returns if test_mode else self.train_returns
         log_prefix = "test_" if test_mode else ""
-        # print(cur_stats)
+       
         # cur_stats.update({k: cur_stats.get(k, 0) + env_info.get(k, 0) for k in set(cur_stats) | set(env_info)})
         cur_stats["n_episodes"] = 1 + cur_stats.get("n_episodes", 0)
         # cur_stats["ep_length"] = self.t + cur_stats.get("ep_length", 0)
@@ -264,7 +256,7 @@ class EpisodeRunner:
         score_history.append(score)
         avg_score = np.mean(score_history[-100:])
         i = cur_stats["n_episodes"]
-        print('episode', i)
+        # print('episode', i)
         if i % PRINT_INTERVAL == 0 and i > 0:
             print('episode', i, 'average score {:.1f}'.format(avg_score))
 
@@ -280,9 +272,7 @@ class EpisodeRunner:
         if self.verbose:
             return self.batch, np.array(all_roles)
         
-        print("run ended ===================")
-        print(self.batch)
-
+      
         return self.batch
 
     def _log(self, returns, stats, prefix):
