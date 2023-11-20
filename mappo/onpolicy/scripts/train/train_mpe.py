@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
 import os
-# import wandb
+import wandb
 import socket
 import setproctitle
 import numpy as np
@@ -96,8 +96,9 @@ def main(args):
         torch.set_num_threads(all_args.n_training_threads)
 
     # run dir
+    exp_name = f'{all_args.num_adversaries}pred_{all_args.num_good_agents}prey'
     run_dir = Path(os.path.split(os.path.dirname(os.path.abspath(__file__)))[
-                   0] + "/results") / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
+                   0] + "/results") / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / exp_name
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 
@@ -107,7 +108,8 @@ def main(args):
                          project=all_args.env_name,
                          entity=all_args.user_name,
                          notes=socket.gethostname(),
-                         name=str(all_args.algorithm_name) + "_" +
+                         name=exp_name + "_" + 
+                         str(all_args.algorithm_name) + "_" +
                          str(all_args.experiment_name) +
                          "_seed" + str(all_args.seed),
                          group=all_args.scenario_name,

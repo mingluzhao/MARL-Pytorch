@@ -4,14 +4,14 @@ from maddpg.multiagent.scenario import BaseScenario
 # predator-prey environment
 
 class Scenario(BaseScenario):
-    def make_world(self):
+    def make_world(self, args):
         world = World()
         # set any world properties first
         world.dim_c = 2
-        num_good_agents = 1
-        num_adversaries = 3
+        num_good_agents = args.num_good_agents#1
+        num_adversaries = args.num_adversaries#3
         num_agents = num_adversaries + num_good_agents
-        num_landmarks = 2
+        num_landmarks = args.num_landmarks#2
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):
@@ -35,7 +35,6 @@ class Scenario(BaseScenario):
         self.reset_world(world)
         return world
 
-
     def reset_world(self, world):
         # random properties for agents
         for i, agent in enumerate(world.agents):
@@ -50,7 +49,7 @@ class Scenario(BaseScenario):
             agent.state.c = np.zeros(world.dim_c)
         for i, landmark in enumerate(world.landmarks):
             if not landmark.boundary:
-                landmark.state.p_pos = np.random.uniform(-0.9, +0.9, world.dim_p)
+                landmark.state.p_pos = 0.8 * np.random.uniform(-1, +1, world.dim_p)
                 landmark.state.p_vel = np.zeros(world.dim_p)
 
 
@@ -80,6 +79,7 @@ class Scenario(BaseScenario):
     def adversaries(self, world):
         return [agent for agent in world.agents if agent.adversary]
 
+
     def reward(self, agent, world):
         # Agents are rewarded based on minimum agent distance to each landmark
         main_reward = self.adversary_reward(agent, world) if agent.adversary else self.agent_reward(agent, world)
@@ -96,7 +96,7 @@ class Scenario(BaseScenario):
         if agent.collide:
             for a in adversaries:
                 if self.is_collision(a, agent):
-                    rew -= 30 #------------------10 TODO: 8.23 modified original sheep reward (-10 for each catch) to -30
+                    rew -= 10
 
         # agents are penalized for exiting the screen, so that they can be caught by the adversaries
         def bound(x):

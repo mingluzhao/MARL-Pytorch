@@ -16,24 +16,25 @@ from maddpg.src.utils.make_env import make_env
 from maddpg.src.utils.env_wrappers import SubprocVecEnv, DummyVecEnv
 from maddpg.src.maddpg import MADDPG
 from maddpg.src.utils.buffer import ReplayBuffer
+import wandb
 
 USE_CUDA = False  # torch.cuda.is_available()
 
-def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action):
+def make_parallel_env(args):
     def get_env_fn(rank):
         def init_env():
-            env = make_env(env_id, discrete_action=discrete_action)
-            env.seed(seed + rank * 1000)
-            np.random.seed(seed + rank * 1000)
+            env = make_env(args)
+            env.seed(args.seed + rank * 1000)
+            np.random.seed(args.seed + rank * 1000)
             return env
         return init_env
-    if n_rollout_threads == 1:
+    if args.n_rollout_threads == 1:
         return DummyVecEnv([get_env_fn(0)])
     else:
-        return SubprocVecEnv([get_env_fn(i) for i in range(n_rollout_threads)])
+        return SubprocVecEnv([get_env_fn(i) for i in range(args.n_rollout_threads)])
 
 def run(config):
-    model_dir = Path('./models') / config.env_id / config.model_name
+    model_dir = Path('./models') / config.scenario_name / config.model_name
     if not model_dir.exists():
         curr_run = 'run1'
     else:
@@ -46,18 +47,28 @@ def run(config):
     log_dir = run_dir / 'logs'
     os.makedirs(log_dir)
     logger = SummaryWriter(str(log_dir))
+    exp_name = f'{config.num_adversaries}pred_{config.num_good_agents}prey'
+    print(exp_name)
+
+    # wandb
+    run = wandb.init(config=config,
+                    project=config.scenario_name,
+                    entity="minglu-zhao",
+                    name= f'maddpg_{exp_name}',
+                    group=exp_name,
+                    dir=str(run_dir))
 
     torch.manual_seed(config.seed)
     np.random.seed(config.seed)
     if not USE_CUDA:
         torch.set_num_threads(config.n_training_threads)
-    env = make_parallel_env(config.env_id, config.n_rollout_threads, config.seed, config.discrete_action)
+    env = make_parallel_env(config)
 
     obsShape = [obsp.shape[0] for obsp in env.observation_space]
     actionDimList = [acsp.shape[0] if isinstance(acsp, Box) else acsp.n for acsp in env.action_space]
     hiddenDimList = [config.hidden_dim]* config.hidden_layer_num
 
-    numAgents = len(env.agent_types)
+    numAgents = config.num_adversaries + config.num_good_agents
 
     algorithmTypes = ['MADDPG']* numAgents
     isDiscreteAction = True
@@ -106,7 +117,8 @@ def run(config):
                 maddpg.prep_rollouts(device='cpu')
         ep_rews = buffer.get_average_rewards(config.maxTimeStep * config.n_rollout_threads)
         for a_i, a_ep_rew in enumerate(ep_rews):
-            logger.add_scalar('agent%i/mean_episode_rewards' % a_i, a_ep_rew, ep_i)
+            logger.add_scalar('agent%i/mean_episode_rewards' % a_i, a_ep_rew, ep_i)            
+            wandb.log({'agent%i/mean_episode_rewards' % a_i: a_ep_rew}, ep_i)
 
         if ep_i % config.save_interval < config.n_rollout_threads:
             os.makedirs(run_dir / 'incremental', exist_ok=True)
@@ -117,18 +129,20 @@ def run(config):
     env.close()
     logger.export_scalars_to_json(str(log_dir / 'summary.json'))
     logger.close()
+    run.finish()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num_predators", default=3, type=int, help="num_predators")
-    parser.add_argument("--speed", default=1, type=float, help="speed")
-    parser.add_argument("--cost", default=0, type=float, help="cost")
-    parser.add_argument("--selfish", default=1, type=float, help="selfish")
+    parser.add_argument("--scenario_name", default= "simple_tag", type = str, help="Name of environment")
 
-    parser.add_argument("--env_id", default= "simple_tag", type = str, help="Name of environment")
+    parser.add_argument("--num_adversaries", type=int, default=3)    
+    parser.add_argument("--num_good_agents", type=int, default=1)
+    parser.add_argument("--num_landmarks", type=int, default=2)
+
     parser.add_argument("--model_name", default= "hunt_gym", type = str, help="Name of directory to store " + "model/training contents")
     parser.add_argument("--seed", default=1, type=int, help="Random seed")
+    parser.add_argument("--n_rollout_threads", default=1, type=int)
     parser.add_argument("--n_training_threads", default=6, type=int)
     parser.add_argument("--bufferSize", default=int(1e6), type=int)
     parser.add_argument("--maxTimeStep", default=75, type=int)
@@ -139,14 +153,13 @@ if __name__ == '__main__':
     parser.add_argument("--init_noise_scale", default=0.3, type=float)
     parser.add_argument("--final_noise_scale", default=0.0, type=float)
     parser.add_argument("--save_interval", default=10000, type=int)
+    parser.add_argument("--hidden_dim", default=64, type=int)
     parser.add_argument("--lr", default=0.01, type=float)
     parser.add_argument("--tau", default=0.01, type=float)
     parser.add_argument("--agent_alg", default="MADDPG", type=str, choices=['MADDPG', 'DDPG'])
     parser.add_argument("--adversary_alg", default="MADDPG", type=str, choices=['MADDPG', 'DDPG'])
     parser.add_argument("--discrete_action", action='store_true')
     
-    parser.add_argument("--n_rollout_threads", default=1, type=int)
-    parser.add_argument("--hidden_dim", default=128, type=int)
     parser.add_argument("--hidden_layer_num", default=2, type=int)
     config = parser.parse_args()
 
