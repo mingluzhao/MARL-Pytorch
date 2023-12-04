@@ -108,6 +108,8 @@ class Agent(Entity):
         self.action_callback = None
         # zoe 20200420
         self.goal = None
+        # lucy add sheep health level
+        self.health = 0
 
 # multi-agent world
 class World(object):
