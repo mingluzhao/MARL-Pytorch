@@ -13,6 +13,9 @@ class Scenario(BaseScenario):
         num_adversaries = args.num_adversaries#3
         num_agents = num_adversaries + num_good_agents
         num_landmarks = args.num_landmarks#2
+
+        self.render_verbose = args.render_verbose
+        self.num_agents = num_agents
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):
@@ -24,6 +27,7 @@ class Scenario(BaseScenario):
             agent.accel = 3.0 if agent.adversary else 4.0
             agent.max_speed = 1.0 if agent.adversary else args.prey_speed
             agent.health = 100 if agent.adversary else 6 # Lucy: add health level for sheep - each bite decreases 1
+            agent.hurt = False
         # add landmarks
         world.landmarks = [Landmark() for i in range(num_landmarks)]
         for i, landmark in enumerate(world.landmarks):
@@ -82,8 +86,16 @@ class Scenario(BaseScenario):
 
 
     def reward(self, agent, world):
-        # Agents are rewarded based on minimum agent distance to each landmark
         main_reward = self.adversary_reward(agent, world) if agent.adversary else self.agent_reward(agent, world)
+        last_agent_id = self.num_agents - 1
+
+        if agent.name == 'agent %d' % last_agent_id:
+            # after rewarding last agent, make sure all prey are "not hurt" -- called each time step
+            for ag in self.good_agents(world):
+                ag.hurt = False
+            if self.render_verbose:
+                print("----------------- all prey not hurt ------------------")
+
         return main_reward
 
     def agent_reward(self, agent, world):
@@ -117,15 +129,21 @@ class Scenario(BaseScenario):
         for ag in agents:
             for adv in adversaries:
                 if self.is_collision(ag, adv):
-                    ag.health -= 1
+                    if not ag.hurt: # not yet editted the health level -- account for multiple predator -- health deducted multiple times
+                        ag.health = ag.health - 1 if ag.health != 0 else 5 # if original health = 0 and bite again, then should be 5 -- should be 
+
                     if ag.health == 0:
                         rew += 10
-                        ag.health = 6
                     else:
                         rew += 1
-            # if rew != 0:
-            #     print("collide! --- health = ", ag.health)
+                    
+                    if ag.hurt == False:
+                        ag.hurt = True
 
+                    if self.render_verbose:
+                        print(f"collide! --- Wolf{adv.name} with Sheep {ag.name}, current reward {rew}; agents' health = ", [prey.health for prey in agents])
+        if self.render_verbose:
+            print(f'{agent.name} time step reward is {rew}')
         return rew
 
     def observation(self, agent, world):

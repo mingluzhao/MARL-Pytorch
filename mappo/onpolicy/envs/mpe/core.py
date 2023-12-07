@@ -110,6 +110,7 @@ class Agent(Entity):
         self.goal = None
         # lucy add sheep health level
         self.health = 0
+        self.hurt = False
 
 # multi-agent world
 class World(object):

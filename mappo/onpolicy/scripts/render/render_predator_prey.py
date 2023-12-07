@@ -38,11 +38,12 @@ def main():
 
     all_args.env_name="MPE"
     all_args.scenario_name="iw_env"
-    all_args.num_good_agents=1
-    all_args.num_adversaries=1
+    all_args.num_good_agents=2
+    all_args.num_adversaries=3
     all_args.num_landmarks=2
     all_args.algorithm_name="rmappo" #"mappo" "ippo"
-    all_args.experiment_name="check"
+    all_args.prey_speed = 1
+    all_args.experiment_name=f"preyspeed{all_args.prey_speed}"
     all_args.seed_max=1
     all_args.seed = 0
 
@@ -63,9 +64,10 @@ def main():
     all_args.render_episodes = 10
     all_args.user_name = "minglu-zhao" 
     all_args.num_agents= all_args.num_good_agents + all_args.num_adversaries
-
-    exp_name = f'{all_args.num_adversaries}pred_{all_args.num_good_agents}prey'# _{all_args.experiment_name}'
+    exp_name = f'{all_args.num_adversaries}pred_{all_args.num_good_agents}prey_{all_args.experiment_name}'
     all_args.model_dir = f"../results/MPE/{all_args.scenario_name}/rmappo/{exp_name}/wandb/latest-run/files"
+
+    all_args.render_verbose = True
 
     if all_args.algorithm_name == "rmappo":
         print("u are choosing to use rmappo, we set use_recurrent_policy to be True")

@@ -137,7 +137,7 @@ def main():
                         entity=all_args.user_name,
                         notes=socket.gethostname(),
                         name= f"{current_date}-{exp_name}-{all_args.algorithm_name}",
-                        group=all_args.scenario_name,
+                        group="kill-bite",
                         dir=str(run_dir),
                         job_type= all_args.experiment_name,
                         reinit=True)
