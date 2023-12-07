@@ -5,6 +5,8 @@ from onpolicy.envs.mpe.scenario import BaseScenario
 class Scenario(BaseScenario):
     def make_world(self, args):
         world = World()
+        world.world_length = args.episode_length
+
         # set any world properties first
         world.dim_c = 2
         num_good_agents = args.num_good_agents#1
@@ -45,6 +47,8 @@ class Scenario(BaseScenario):
             agent.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
             agent.state.p_vel = np.zeros(world.dim_p)
             agent.state.c = np.zeros(world.dim_c)
+            agent.health = 100 if agent.adversary else 6
+
         for i, landmark in enumerate(world.landmarks):
             landmark.state.p_pos = 0.8 * np.random.uniform(-1, +1, world.dim_p)
             landmark.state.p_vel = np.zeros(world.dim_p)
@@ -119,6 +123,8 @@ class Scenario(BaseScenario):
                         ag.health = 6
                     else:
                         rew += 1
+            # if rew != 0:
+            #     print("collide! --- health = ", ag.health)
 
         return rew
 
