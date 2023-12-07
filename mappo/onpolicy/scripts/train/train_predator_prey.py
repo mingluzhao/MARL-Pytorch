@@ -68,7 +68,7 @@ def main():
 
     all_args.env_name="MPE"
     all_args.scenario_name="iw_env"
-    all_args.num_good_agents=1
+    all_args.num_good_agents=4
     all_args.num_adversaries=3
     all_args.num_landmarks=2
     all_args.algorithm_name="rmappo" #"mappo" "ippo"
@@ -92,7 +92,7 @@ def main():
     all_args.user_name = "minglu-zhao" 
     all_args.num_agents= all_args.num_good_agents + all_args.num_adversaries
 
-
+    all_args.render_verbose = False 
     print(all_args)
     if all_args.algorithm_name == "rmappo":
         print("u are choosing to use rmappo, we set use_recurrent_policy to be True")
