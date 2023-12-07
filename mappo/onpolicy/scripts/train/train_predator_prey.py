@@ -7,7 +7,7 @@ import setproctitle
 import numpy as np
 from pathlib import Path
 import torch
-import datetime
+from datetime import datetime
 from onpolicy.config import get_config
 from onpolicy.envs.mpe.MPE_env import MPEEnv
 from onpolicy.envs.env_wrappers import SubprocVecEnv, DummyVecEnv
@@ -69,10 +69,11 @@ def main():
     all_args.env_name="MPE"
     all_args.scenario_name="iw_env"
     all_args.num_good_agents=1
-    all_args.num_adversaries=1
+    all_args.num_adversaries=3
     all_args.num_landmarks=2
     all_args.algorithm_name="rmappo" #"mappo" "ippo"
-    all_args.experiment_name="speed1"
+    all_args.prey_speed = 1
+    all_args.experiment_name=f"preyspeed{all_args.prey_speed}"
     all_args.seed_max=1
     all_args.seed = 0
 
@@ -135,10 +136,10 @@ def main():
                         project=all_args.env_name,
                         entity=all_args.user_name,
                         notes=socket.gethostname(),
-                        name= f"{current_date}-{exp_name}-{all_args.algorithm_name}-{all_args.experiment_name}-seed{all_args.seed}",
+                        name= f"{current_date}-{exp_name}-{all_args.algorithm_name}",
                         group=all_args.scenario_name,
                         dir=str(run_dir),
-                        job_type="training",
+                        job_type= all_args.experiment_name,
                         reinit=True)
 
     setproctitle.setproctitle(str(all_args.algorithm_name) + "-" + \

@@ -22,7 +22,7 @@ class Scenario(BaseScenario):
             agent.adversary = True if i < num_adversaries else False
             agent.size = 0.075 if agent.adversary else 0.05
             agent.accel = 3.0 if agent.adversary else 4.0
-            agent.max_speed = 1.0 if agent.adversary else 1.3
+            agent.max_speed = 1.0 if agent.adversary else args.prey_speed
             agent.health = 100 if agent.adversary else 6 # Lucy: add health level for sheep - each bite decreases 1
         # add landmarks
         world.landmarks = [Landmark() for i in range(num_landmarks)]
