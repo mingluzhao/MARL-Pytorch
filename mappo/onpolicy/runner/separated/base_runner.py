@@ -21,6 +21,8 @@ class Runner(object):
         self.eval_envs = config['eval_envs']
         self.device = config['device']
         self.num_agents = config['num_agents']
+        self.multi_envs = config.get("multi_envs", None)
+        self.agentid_recover_list = config.get("agentid_recover_list", None)
 
         # parameters
         self.env_name = self.all_args.env_name
@@ -78,23 +80,54 @@ class Runner(object):
             from onpolicy.algorithms.r_mappo.algorithm.rMAPPOPolicy import R_MAPPOPolicy as Policy
 
 
-        print("share_observation_space: ", self.envs.share_observation_space)
-        print("observation_space: ", self.envs.observation_space)
-        print("action_space: ", self.envs.action_space)
+
 
         self.policy = []
-        for agent_id in range(self.num_agents):
-            share_observation_space = self.envs.share_observation_space[agent_id] if self.use_centralized_V else self.envs.observation_space[agent_id]
-            # policy network
-            po = Policy(self.all_args,
-                        self.envs.observation_space[agent_id],
-                        share_observation_space,
-                        self.envs.action_space[agent_id],
-                        device = self.device)
-            self.policy.append(po)
+        if self.multi_envs is not None:
+            for agent_id in range(self.num_agents):
+                env = self.multi_envs[agent_id]
 
+                if agent_id >= len(env.share_observation_space): # agentid in the test env is larger than actually trained -- for sheep, env is 3v2 but want it to be from 3v1 train
+                    share_observation_space = env.share_observation_space[-1] if self.use_centralized_V else env.observation_space[-1]
+                     # policy network
+                    po = Policy(self.all_args,
+                                env.observation_space[-1],
+                                share_observation_space,
+                                env.action_space[-1],
+                                device = self.device)
+                else:
+                    share_observation_space = env.share_observation_space[agent_id] if self.use_centralized_V else env.observation_space[agent_id]
+                
+                    # policy network
+                    po = Policy(self.all_args,
+                                env.observation_space[agent_id],
+                                share_observation_space,
+                                env.action_space[agent_id],
+                                device = self.device)
+                self.policy.append(po)
+
+                print(f"Agent {agent_id} share_observation_space: ", self.envs.share_observation_space)
+                print(f"Agent {agent_id} observation_space: ", self.envs.observation_space)
+                print(f"Agent {agent_id} action_space: ", self.envs.action_space)
+        else:
+            for agent_id in range(self.num_agents):
+                share_observation_space = self.envs.share_observation_space[agent_id] if self.use_centralized_V else self.envs.observation_space[agent_id]
+                # policy network
+                po = Policy(self.all_args,
+                            self.envs.observation_space[agent_id],
+                            share_observation_space,
+                            self.envs.action_space[agent_id],
+                            device = self.device)
+                self.policy.append(po)
+
+            
         if self.model_dir is not None:
-            self.restore()
+            if isinstance(self.model_dir, list):
+                print(f"--- Recovering {len(self.model_dir)} models ---")
+                self.restore_multiple()
+            else:
+                print(f"--- Recovering single model ---")
+                self.restore()
 
         self.trainer = []
         self.buffer = []
@@ -197,6 +230,18 @@ class Runner(object):
             policy_actor_state_dict = torch.load(str(self.model_dir) + '/actor_agent' + str(agent_id) + '.pt')
             self.policy[agent_id].actor.load_state_dict(policy_actor_state_dict)
             policy_critic_state_dict = torch.load(str(self.model_dir) + '/critic_agent' + str(agent_id) + '.pt')
+            self.policy[agent_id].critic.load_state_dict(policy_critic_state_dict)
+            # if self.all_args.use_valuenorm:
+            #     policy_vnrom_state_dict = torch.load(str(self.model_dir) + '/vnrom_agent' + str(agent_id) + '.pt')
+            #     self.trainer[agent_id].value_normalizer.load_state_dict(policy_vnrom_state_dict)
+
+
+    def restore_multiple(self):
+        for agent_id in range(self.num_agents):
+            agent_id_recover = self.agentid_recover_list[agent_id]
+            policy_actor_state_dict = torch.load(str(self.model_dir[agent_id]) + '/actor_agent' + str(agent_id_recover) + '.pt')
+            self.policy[agent_id].actor.load_state_dict(policy_actor_state_dict)
+            policy_critic_state_dict = torch.load(str(self.model_dir[agent_id]) + '/critic_agent' + str(agent_id_recover) + '.pt')
             self.policy[agent_id].critic.load_state_dict(policy_critic_state_dict)
             # if self.all_args.use_valuenorm:
             #     policy_vnrom_state_dict = torch.load(str(self.model_dir) + '/vnrom_agent' + str(agent_id) + '.pt')
