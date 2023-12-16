@@ -50,30 +50,18 @@ def make_eval_env(all_args):
         return SubprocVecEnv([get_env_fn(i) for i in range(all_args.n_eval_rollout_threads)])
 
 
-def parse_args(args, parser):
-    parser.add_argument('--scenario_name', type=str,
-                        default='simple_spread', help="Which scenario to run on")
-    parser.add_argument("--num_landmarks", type=int, default=3)
-    parser.add_argument('--num_agents', type=int,
-                        default=2, help="number of players")
-
-    all_args = parser.parse_known_args(args)[0]
-
-    return all_args
-
-
 def main():
     parser = get_config()
     all_args = parser.parse_args()
 
     all_args.env_name="MPE"
-    all_args.scenario_name="iw_env"
+    all_args.scenario_name="simple_tag"
+    all_args.discrete_action = True
+
     all_args.num_good_agents=4
     all_args.num_adversaries=3
     all_args.num_landmarks=2
     all_args.algorithm_name="rmappo" #"mappo" "ippo"
-    all_args.prey_speed = 1
-    all_args.experiment_name=f"preyspeed{all_args.prey_speed}"
     all_args.seed_max=1
     all_args.seed = 0
 
@@ -82,7 +70,7 @@ def main():
     all_args.n_training_threads = 1 
     all_args.n_rollout_threads = 128 
     all_args.num_mini_batch = 1 
-    all_args.episode_length = 75 
+    all_args.episode_length = 25
     all_args.num_env_steps = 20000000 
     all_args.ppo_epoch = 10 
     all_args.use_ReLU = False
@@ -125,7 +113,7 @@ def main():
         torch.set_num_threads(all_args.n_training_threads)
 
     # run dir
-    exp_name = f'{all_args.num_adversaries}pred_{all_args.num_good_agents}prey_{all_args.experiment_name}'
+    exp_name = f'{all_args.num_adversaries}pred_{all_args.num_good_agents}prey'
     run_dir = Path(os.path.split(os.path.dirname(os.path.abspath(__file__)))[
                    0] + "/results") / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / exp_name
     if not run_dir.exists():
@@ -136,10 +124,10 @@ def main():
                         project=all_args.env_name,
                         entity=all_args.user_name,
                         notes=socket.gethostname(),
-                        name= f"{current_date}-{exp_name}-{all_args.algorithm_name}",
-                        group="kill-bite",
+                        name= f"{current_date}-{exp_name}-{all_args.algorithm_name}-{all_args.episode_length}steps-seed{all_args.seed}",
+                        group=f"{all_args.scenario_name}_rmappo",
                         dir=str(run_dir),
-                        job_type= all_args.experiment_name,
+                        job_type= f"discrete{all_args.discrete_action}_share_policy_{all_args.share_policy}",
                         reinit=True)
 
     setproctitle.setproctitle(str(all_args.algorithm_name) + "-" + \
