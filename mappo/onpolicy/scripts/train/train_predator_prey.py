@@ -91,7 +91,7 @@ def main():
     all_args.critic_lr = 7e-4 
     all_args.user_name = "minglu-zhao" 
     all_args.num_agents= all_args.num_good_agents + all_args.num_adversaries
-
+    all_args.eval = False
     all_args.render_verbose = False 
     print(all_args)
     if all_args.algorithm_name == "rmappo":
@@ -130,7 +130,7 @@ def main():
                    0] + "/results") / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / exp_name
     if not run_dir.exists():
         os.makedirs(str(run_dir))
-    
+
     current_date = datetime.today().strftime('%m-%d')
     run = wandb.init(config=all_args,
                         project=all_args.env_name,

@@ -6,6 +6,7 @@ class Scenario(BaseScenario):
     def make_world(self, args):
         world = World()
         world.world_length = args.episode_length
+        self.eval = args.eval # if eval, use reward = 1 for all bites
 
         # set any world properties first
         world.dim_c = 2
@@ -15,7 +16,7 @@ class Scenario(BaseScenario):
         num_landmarks = args.num_landmarks#2
 
         self.render_verbose = args.render_verbose
-        self.num_agents = num_agents
+        world.num_agents = num_agents
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):
@@ -87,7 +88,7 @@ class Scenario(BaseScenario):
 
     def reward(self, agent, world):
         main_reward = self.adversary_reward(agent, world) if agent.adversary else self.agent_reward(agent, world)
-        last_agent_id = self.num_agents - 1
+        last_agent_id = world.num_agents - 1
 
         if agent.name == 'agent %d' % last_agent_id:
             # after rewarding last agent, make sure all prey are "not hurt" -- called each time step
@@ -132,8 +133,11 @@ class Scenario(BaseScenario):
                     if not ag.hurt: # not yet editted the health level -- account for multiple predator -- health deducted multiple times
                         ag.health = ag.health - 1 if ag.health != 0 else 5 # if original health = 0 and bite again, then should be 5 -- should be 
 
-                    if ag.health == 0:
-                        rew += 10
+                    if ag.health == 0: # killed
+                        if self.eval:
+                            rew += 1
+                        else:
+                            rew += 10
                     else:
                         rew += 1
                     
