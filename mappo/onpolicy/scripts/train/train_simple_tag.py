@@ -53,12 +53,12 @@ def make_eval_env(all_args):
 def main():
     parser = get_config()
     all_args = parser.parse_args()
-
+    all_args.use_wandb = False
     all_args.env_name="MPE"
     all_args.scenario_name="simple_tag"
     all_args.discrete_action = True
 
-    all_args.num_good_agents=4
+    all_args.num_good_agents=1
     all_args.num_adversaries=3
     all_args.num_landmarks=2
     all_args.algorithm_name="rmappo" #"mappo" "ippo"
@@ -68,7 +68,7 @@ def main():
     all_args.cuda = False 
     all_args.share_policy = False
     all_args.n_training_threads = 1 
-    all_args.n_rollout_threads = 128 
+    all_args.n_rollout_threads = 6
     all_args.num_mini_batch = 1 
     all_args.episode_length = 25
     all_args.num_env_steps = 20000000 
@@ -120,15 +120,15 @@ def main():
         os.makedirs(str(run_dir))
 
     current_date = datetime.today().strftime('%m-%d')
-    run = wandb.init(config=all_args,
-                        project=all_args.env_name,
-                        entity=all_args.user_name,
-                        notes=socket.gethostname(),
-                        name= f"{current_date}-{exp_name}-{all_args.algorithm_name}-{all_args.episode_length}steps-seed{all_args.seed}",
-                        group=f"{all_args.scenario_name}_rmappo",
-                        dir=str(run_dir),
-                        job_type= f"discrete{all_args.discrete_action}_share_policy_{all_args.share_policy}",
-                        reinit=True)
+    # run = wandb.init(config=all_args,
+    #                     project=all_args.env_name,
+    #                     entity=all_args.user_name,
+    #                     notes=socket.gethostname(),
+    #                     name= f"{current_date}-{exp_name}-{all_args.algorithm_name}-{all_args.episode_length}steps-seed{all_args.seed}",
+    #                     group=f"{all_args.scenario_name}_rmappo",
+    #                     dir=str(run_dir),
+    #                     job_type= f"discrete{all_args.discrete_action}_share_policy_{all_args.share_policy}",
+    #                     reinit=True)
 
     setproctitle.setproctitle(str(all_args.algorithm_name) + "-" + \
         str(all_args.env_name) + "-" + str(all_args.experiment_name) + "@" + str(all_args.user_name))
@@ -166,11 +166,11 @@ def main():
     if all_args.use_eval and eval_envs is not envs:
         eval_envs.close()
 
-    if all_args.use_wandb:
-        run.finish()
-    else:
-        runner.writter.export_scalars_to_json(str(runner.log_dir + '/summary.json'))
-        runner.writter.close()
+    # if all_args.use_wandb:
+    #     run.finish()
+    # else:
+    #     runner.writter.export_scalars_to_json(str(runner.log_dir + '/summary.json'))
+    #     runner.writter.close()
 
 
 if __name__ == "__main__":
