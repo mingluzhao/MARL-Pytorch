@@ -74,12 +74,6 @@ class MPERunner(Runner):
                                 int(total_num_steps / (end - start))))
 
                 for agent_id in range(self.num_agents):
-                    idv_rews = []
-                    # for info in infos:
-                    #     for count, info in enumerate(infos):
-                    #         if 'individual_reward' in infos[count][agent_id].keys():
-                    #             idv_rews.append(infos[count][agent_id].get('individual_reward', 0))
-                    train_infos[agent_id].update({'individual_rewards': np.mean(idv_rews)})
                     train_infos[agent_id].update({"average_episode_rewards": np.mean(self.buffer[agent_id].rewards) * self.episode_length})
                 self.log_train(train_infos, total_num_steps)
 

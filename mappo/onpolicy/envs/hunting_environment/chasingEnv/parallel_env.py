@@ -86,3 +86,20 @@ class ParallelEnv:
             remote.send(('close', None))
         for p in self.ps:
             p.join()
+
+
+class EvalVecEnv:
+    def __init__(self, reset, observe, transit, rewardFunc, isTerminal):
+        self.envs = [CustomEnv(reset, observe, transit, rewardFunc, isTerminal)]
+
+    def step(self, states, actions):
+        results = [env.step(state, action) for env, state, action in zip(self.envs, states, actions)]
+        nextState, nextObs, rewards, dones, infos = zip(*results)
+        return np.array(nextState), np.array(nextObs), np.array(rewards), np.array(dones), infos
+
+    def reset(self):
+        return np.array([env.reset() for env in self.envs])
+
+    def observe(self, states):
+        return np.array([env.observe(state) for env, state in zip(self.envs, states)])
+

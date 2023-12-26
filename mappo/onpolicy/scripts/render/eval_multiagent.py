@@ -150,6 +150,7 @@ def main():
         all_args.render_episodes = 50
         all_args.user_name = "minglu-zhao"
         all_args.num_agents= all_args.num_good_agents + all_args.num_adversaries
+        all_args.discrete_action = True
 
         exp_name = "IW"
         foldername = f'{all_args.num_adversaries}pred_{all_args.num_good_agents}prey_preyspeed{all_args.prey_speed}'
