@@ -198,6 +198,7 @@ class Runner(object):
                 torch.save(policy_vnrom.state_dict(), str(self.save_dir) + "/vnrom_agent" + str(agent_id) + ".pt")
 
     def restore(self):
+        print(f'Loading models called {str(self.model_dir)} for {self.num_agents} agents')
         for agent_id in range(self.num_agents):
             policy_actor_state_dict = torch.load(str(self.model_dir) + '/actor_agent' + str(agent_id) + '.pt')
             self.policy[agent_id].actor.load_state_dict(policy_actor_state_dict)
