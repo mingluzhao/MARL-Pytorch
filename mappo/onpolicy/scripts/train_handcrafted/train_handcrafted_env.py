@@ -19,16 +19,40 @@ from onpolicy.envs.hunting_environment.chasingEnv.multiAgentEnv import TransitMu
     getPosFromAgentState, getVelFromAgentState, getCaughtHistoryFromAgentState
 from onpolicy.envs.hunting_environment.chasingEnv.multiAgentEnvWithIndividReward import RewardWolfIndividualWithBiteAndKill
 
+# 0.7 1.1 1.5
+# share individual 
+# 75 
+# 3 vs 124. 0 block 
+import base64
 
 def main():
-    numWolves = 3
-    numSheeps = 1
-    numBlocks = 1
-    maxTimeStep = 75
-    sheepSpeedMultiplier = 1
-    individualRewardWolf = int(True)
+    debug = False
+    if debug:
+        numSheeps = 4
+        sheepSpeedMultiplier = 1.1 # 0.7, 1.1, 1.5
+        individualRewardWolf = 0
+        discrete_action = False
+        seed = 42
+        killZoneRatio = 1.2
+    else:
+        # print(sys.argv)
+        encoded_json = sys.argv[1]
+        decoded_json = base64.b64decode(encoded_json).decode('utf-8')
+        condition = json.loads(decoded_json)
+        print("condition")
+        print(condition)
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
 
-    debug = False # False
+        numSheeps = int(condition['numSheeps'])
+        sheepSpeedMultiplier = float(condition['sheepSpeedMultiplier'])
+        individualRewardWolf = int(condition['individualRewardWolf'])
+        discrete_action = bool(condition['discrete_action'])
+        seed = int(condition['seed'])
+        killZoneRatio = float(condition['killZoneRatio'])
+
+    numWolves = 3
+    numBlocks = 0   
+    maxTimeStep = 75
 
     # --------------- environment information ---------------
     numAgents = numWolves + numSheeps
@@ -51,7 +75,6 @@ def main():
     entitiesMovableList = [True] * numAgents + [False] * numBlocks
     massList = [1.0] * numEntities
 
-    killZoneRatio = 1.2
     isCollision = IsCollision(getPosFromAgentState, killZoneRatio)
     punishForOutOfBound = PunishForOutOfBound()
     sheepLife = 6
@@ -98,17 +121,18 @@ def main():
     worldDim = 2
     actionDim = worldDim * 2 + 1
 
-
+# conda activate marl
+# python train_handcrafted_env.py
+    
     # ------------ models ------------------------
-
     parser = get_config()
     all_args = parser.parse_args()
     all_args.env_name="MPE"
     all_args.scenario_name="iw22"
-    all_args.discrete_action = True
+    all_args.discrete_action = discrete_action
     all_args.algorithm_name="rmappo" #"mappo" "ippo"
-    all_args.seed_max=1
-    all_args.seed = 0
+    all_args.seed_max= 25
+    all_args.seed = seed
 
     # ------------ training parameters -----------
     all_args.cuda = False 
@@ -148,7 +172,7 @@ def main():
     torch.set_num_threads(all_args.n_training_threads)
 
     # run dir
-    exp_name = f'{numWolves}pred_{numSheeps}prey-{numBlocks}block-sheepspeed{sheepSpeedMultiplier}-indivd{individualRewardWolf}-discrete{all_args.discrete_action}-seed{all_args.seed}'
+    exp_name = f'{numWolves}pred_{numSheeps}prey-{numBlocks}block-sheepspeed{sheepSpeedMultiplier}-indivd{individualRewardWolf}-discrete{all_args.discrete_action}-killzone{killZoneRatio}-seed{all_args.seed}'
 
 
     run_dir = Path(os.path.split(os.path.dirname(os.path.abspath(__file__)))[
@@ -156,6 +180,7 @@ def main():
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 
+    contin_str = "discrete" if all_args.discrete_action else "continuous"
     if not debug:
         current_date = datetime.today().strftime('%m-%d')
         run = wandb.init(config=all_args,
@@ -165,12 +190,11 @@ def main():
                             name= f"{current_date}-{exp_name}-{all_args.algorithm_name}-{all_args.episode_length}steps",
                             group=f"{all_args.scenario_name}_rmappo",
                             dir=str(run_dir),
-                            job_type= f"sheepspeed{sheepSpeedMultiplier}-indivd{individualRewardWolf}-discrete" if all_args.discrete_action else f"sheepspeed{sheepSpeedMultiplier}-indivd{individualRewardWolf}-continuous",
+                            job_type= f"sheepspeed{sheepSpeedMultiplier}-indivd{individualRewardWolf}-killzone{killZoneRatio}-{contin_str}" ,
                             reinit=True)
 
-    setproctitle.setproctitle(str(all_args.algorithm_name) + "-" + \
-        str(all_args.env_name) + "-" + str(all_args.experiment_name) + "@" + str(all_args.user_name))
-
+    setproctitle.setproctitle(exp_name)
+    
     # seed
     torch.manual_seed(all_args.seed)
     torch.cuda.manual_seed_all(all_args.seed)
