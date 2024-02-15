@@ -13,11 +13,11 @@ import numpy as np
 import json
 
 from onpolicy.envs.hunting_environment.chasingEnv.multiAgentEnv import TransitMultiAgentChasing, ApplyActionForce, ApplyEnvironForce, \
-    ResetMultiAgentChasing, ResetMultiAgentChasingWithCaughtHistory, ResetStateWithCaughtHistory, ReshapeAction, \
-    CalSheepCaughtHistory, RewardSheep, RewardSheepWithBiteAndKill, RewardWolf, RewardWolfWithBiteAndKill, ObserveWithCaughtHistory, \
-    GetCollisionForce, IntegrateState, IntegrateStateWithCaughtHistory, IsCollision, PunishForOutOfBound, \
+    ResetMultiAgentChasingWithCaughtHistoryWithApples, ResetStateWithCaughtHistory, ReshapeAction, \
+    CalSheepCaughtHistory, RewardSheepWithBiteAndKill, RewardWolfWithBiteKillAndApples, ObserveWithCaughtHistoryWithApples, \
+    GetCollisionForce, IntegrateStateWithCaughtHistory, IsCollision, PunishForOutOfBound, \
     getPosFromAgentState, getVelFromAgentState, getCaughtHistoryFromAgentState
-from onpolicy.envs.hunting_environment.chasingEnv.multiAgentEnvWithIndividReward import RewardWolfIndividualWithBiteAndKill
+from onpolicy.envs.hunting_environment.chasingEnv.multiAgentEnvWithIndividReward import RewardWolfIndividualWithBiteKillAndApples
 
 # 0.7 1.1 1.5
 # share individual 
@@ -26,7 +26,7 @@ from onpolicy.envs.hunting_environment.chasingEnv.multiAgentEnvWithIndividReward
 import base64
 
 def main():
-    debug = False
+    debug = False 
     if debug:
         numSheeps = 4
         sheepSpeedMultiplier = 1.1 # 0.7, 1.1, 1.5
@@ -52,27 +52,31 @@ def main():
 
     numWolves = 3
     numBlocks = 0   
+    numApples = 3
     maxTimeStep = 75
 
     # --------------- environment information ---------------
     numAgents = numWolves + numSheeps
-    numEntities = numAgents + numBlocks
+    numEntities = numAgents + numBlocks + numApples
     wolvesID = list(range(numWolves))
     sheepsID = list(range(numWolves, numAgents))
-    blocksID = list(range(numAgents, numEntities))
+    blocksID = list(range(numAgents, numAgents + numBlocks))
+    applesID = list(range(numAgents + numBlocks, numAgents + numBlocks + numApples))
 
     wolfSize = 0.065
     sheepSize = 0.065
     blockSize = 0.2
-    entitiesSizeList = [wolfSize] * numWolves + [sheepSize] * numSheeps + [blockSize] * numBlocks
+    appleSize = 0.065
+    entitiesSizeList = [wolfSize] * numWolves + [sheepSize] * numSheeps + [blockSize] * numBlocks + [appleSize] * numApples
 
     wolfMaxSpeed = 1.0
     blockMaxSpeed = None
+    appleMaxSpeed = None
     sheepMaxSpeedOriginal = 1.0
     sheepMaxSpeed = sheepMaxSpeedOriginal * sheepSpeedMultiplier
 
-    entityMaxSpeedList = [wolfMaxSpeed] * numWolves + [sheepMaxSpeed] * numSheeps + [blockMaxSpeed] * numBlocks
-    entitiesMovableList = [True] * numAgents + [False] * numBlocks
+    entityMaxSpeedList = [wolfMaxSpeed] * numWolves + [sheepMaxSpeed] * numSheeps + [blockMaxSpeed] * numBlocks + [appleMaxSpeed] * numApples
+    entitiesMovableList = [True] * numAgents + [False] * numBlocks + [False] * numApples
     massList = [1.0] * numEntities
 
     isCollision = IsCollision(getPosFromAgentState, killZoneRatio)
@@ -80,24 +84,24 @@ def main():
     sheepLife = 6
     biteReward = 1
     killReward = 10
+    appleReward = 0.2
     rewardSheep = RewardSheepWithBiteAndKill(wolvesID, sheepsID, entitiesSizeList, getPosFromAgentState, isCollision,
                                              punishForOutOfBound, getCaughtHistoryFromAgentState, sheepLife, biteReward,
                                              killReward)
 
     if individualRewardWolf:
-        rewardWolf = RewardWolfIndividualWithBiteAndKill(wolvesID, sheepsID, entitiesSizeList, isCollision,
-                                                         getCaughtHistoryFromAgentState, sheepLife, biteReward,
-                                                         killReward)
+        rewardWolf = RewardWolfIndividualWithBiteKillAndApples(wolvesID, sheepsID, applesID, entitiesSizeList, isCollision, 
+                                                               getCaughtHistoryFromAgentState, sheepLife, biteReward, killReward, appleReward)
+        
     else:
-        rewardWolf = RewardWolfWithBiteAndKill(wolvesID, sheepsID, entitiesSizeList, isCollision,
-                                               getCaughtHistoryFromAgentState, sheepLife, biteReward, killReward)
+        rewardWolf = RewardWolfWithBiteKillAndApples(wolvesID, sheepsID, applesID, entitiesSizeList, isCollision, 
+                                                     getCaughtHistoryFromAgentState, sheepLife, biteReward, killReward, appleReward)
 
     rewardFunc = lambda state, action, nextState: \
         list(rewardWolf(state, action, nextState)) + list(rewardSheep(state, action, nextState))
 
-    observeOneAgent = lambda agentID: ObserveWithCaughtHistory(agentID, wolvesID, sheepsID, blocksID,
-                                                               getPosFromAgentState,
-                                                               getVelFromAgentState, getCaughtHistoryFromAgentState)
+    observeOneAgent = lambda agentID: ObserveWithCaughtHistoryWithApples(agentID, wolvesID, sheepsID, blocksID, applesID,
+                                                               getPosFromAgentState, getVelFromAgentState, getCaughtHistoryFromAgentState)
     observe = lambda state: [observeOneAgent(agentID)(state) for agentID in range(numAgents)]
 
     reshapeAction = ReshapeAction()
@@ -110,7 +114,7 @@ def main():
                                                      getVelFromAgentState, getPosFromAgentState, calSheepCaughtHistory)
     transit = TransitMultiAgentChasing(numEntities, reshapeAction, applyActionForce, applyEnvironForce, integrateState)
 
-    resetState = ResetMultiAgentChasingWithCaughtHistory(numAgents, numBlocks)
+    resetState = ResetMultiAgentChasingWithCaughtHistoryWithApples(numAgents, numBlocks, numApples)
     reset = ResetStateWithCaughtHistory(resetState, calSheepCaughtHistory)
     # reset = ResetMultiAgentChasing(numAgents, numBlocks)
 
@@ -128,7 +132,7 @@ def main():
     parser = get_config()
     all_args = parser.parse_args()
     all_args.env_name="MPE"
-    all_args.scenario_name="iw22"
+    all_args.scenario_name="iw22_add_apples"
     all_args.discrete_action = discrete_action
     all_args.algorithm_name="rmappo" #"mappo" "ippo"
     all_args.seed_max= 25

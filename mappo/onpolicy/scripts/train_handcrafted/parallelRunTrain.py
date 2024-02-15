@@ -52,12 +52,12 @@ class ExecuteCodeOnConditionsParallel:
 
 def main():
     condition = {
-        "numSheepsLevels": [1, 2, 4], 
-        "sheepSpeedMultiplierLevels": [1.1], #[0.7, 1.1, 1.5], 
-        "individualRewardWolfLevels": [0, 1], 
+        "numSheepsLevels": [2], #[1, 2, 4], 
+        "sheepSpeedMultiplierLevels": [1.1], # [0.7], # [1.1] done, [0.7, 1.1, 1.5], 
+        "individualRewardWolfLevels": [0,1], 
         "discrete_actionLevels": [0],
         "seedLevels": [101, 1001, 10001, 100001, 1000001],
-        "killZoneRatioLevels": [1.2, 1.5, 1.8]
+        "killZoneRatioLevels": [1.2], #, 1.5, 1.8]
         }
 
     numSheepsLevels = condition['numSheepsLevels']
@@ -68,7 +68,7 @@ def main():
     killZoneRatioLevels = condition['killZoneRatioLevels']
 
     startTime = time.time()
-    fileName = 'train_handcrafted_env.py'
+    fileName = 'train_hunting_with_grass.py'
     numCpuToUse = int(0.9 * os.cpu_count())
     excuteCodeParallel = ExecuteCodeOnConditionsParallel(fileName, numCpuToUse)
     print("start")

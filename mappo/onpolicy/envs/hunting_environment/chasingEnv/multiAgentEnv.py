@@ -72,6 +72,46 @@ class RewardWolfWithBiteAndKill:
         reward = [wolfReward] * len(self.wolvesID)
         return reward
 
+class RewardWolfWithBiteKillAndApples:
+    def __init__(self, wolvesID, sheepsID, applesID, entitiesSizeList, isCollision, getCaughtHistoryFromAgentState, sheepLife=3,
+                 biteReward=1, killReward=10, appleReward=5):
+        self.wolvesID = wolvesID
+        self.sheepsID = sheepsID
+        self.applesID = applesID
+        self.entitiesSizeList = entitiesSizeList
+        self.isCollision = isCollision
+        self.getEntityCaughtHistory = lambda state, entityID: getCaughtHistoryFromAgentState(state[entityID])
+        self.sheepLife = sheepLife
+        self.biteReward = biteReward
+        self.killReward = killReward
+        self.appleReward = appleReward
+
+    def __call__(self, state, action, nextState):
+        wolfReward = 0
+        for wolfID in self.wolvesID:
+            wolfSize = self.entitiesSizeList[wolfID]
+            wolfNextState = nextState[wolfID]
+            # Check collision with sheep
+            for sheepID in self.sheepsID:
+                sheepSize = self.entitiesSizeList[sheepID]
+                sheepNextState = nextState[sheepID]
+                if self.isCollision(wolfNextState, sheepNextState, wolfSize, sheepSize):
+                    wolfReward += self.biteReward
+                sheepCaughtHistory = self.getEntityCaughtHistory(state, sheepID)
+                if sheepCaughtHistory == self.sheepLife:
+                    wolfReward += self.killReward
+            # Check collision with apples
+            for appleID in self.applesID:
+                appleSize = self.entitiesSizeList[appleID]
+                appleNextState = nextState[appleID]
+                if self.isCollision(wolfNextState, appleNextState, wolfSize, appleSize):
+                    wolfReward += self.appleReward
+
+        reward = [wolfReward] * len(self.wolvesID)
+        return reward
+
+
+
 
 class ContinuousHuntingRewardWolf:
     def __init__(self, wolvesID, sheepsID, entitiesSizeList, isCollision, sheepLife=3, collisionReward=10):
@@ -287,6 +327,33 @@ class ResetMultiAgentChasingWithCaughtHistory:
         state = np.array(state)
         return state
 
+class ResetMultiAgentChasingWithCaughtHistoryWithApples:
+    def __init__(self, numTotalAgents, numBlocks, numApples):
+        self.positionDimension = 2
+        self.numTotalAgents = numTotalAgents
+        self.numBlocks = numBlocks
+        self.numApples = numApples  # Add number of apples
+
+    def __call__(self):
+        getAgentRandomPos = lambda: np.random.uniform(-1, +1, self.positionDimension)
+        getAgentRandomVel = lambda: np.zeros(self.positionDimension)
+        agentsState = [list(getAgentRandomPos()) + list(getAgentRandomVel()) for ID in range(self.numTotalAgents)]
+        getBlockRandomPos = lambda: np.random.uniform(-0.9, +0.9, self.positionDimension)
+        getBlockSpeed = lambda: np.zeros(self.positionDimension)
+        blocksState = [list(getBlockRandomPos()) + list(getBlockSpeed()) for blockID in range(self.numBlocks)]
+
+        # Initialize apple positions
+        getApplesRandomPos = lambda: np.random.uniform(-1, +1, self.positionDimension)
+        getApplesSpeed = lambda: np.zeros(self.positionDimension)
+        applesState = [list(getApplesRandomPos()) + list(getApplesSpeed()) for _ in range(self.numApples)]
+        
+        state = agentsState + blocksState + applesState  # Append apple states to the overall state
+        agentInitCaughtHistory = 0
+        for agentState in agentsState:  # Apply only to agents
+            agentState.append(agentInitCaughtHistory)
+        state = np.array(state)
+        return state
+
 
 class ResetStateWithCaughtHistory:
     def __init__(self, resetState, calSheepCaughtHistory):
@@ -341,6 +408,46 @@ class Observe:
         # print(self.agentID,self.sheepsID,'agentVel:' ,agentVel, 'agentPos:' ,agentPos, 'blocksInfo:' ,blocksInfo, 'posInfo:' ,posInfo, 'velInfo:' ,velInfo)
         return np.concatenate([agentVel] + [agentPos] + blocksInfo + posInfo + velInfo)
 
+class ObserveWithCaughtHistoryWithApples:
+    def __init__(self, agentID, wolvesID, sheepsID, blocksID, applesID, getPosFromAgentState, getVelFromAgentState,
+                 getCaughtHistoryFromAgentState):
+        self.agentID = agentID
+        self.wolvesID = wolvesID
+        self.sheepsID = sheepsID
+        self.blocksID = blocksID
+        self.applesID = applesID
+        self.getEntityPos = lambda state, entityID: getPosFromAgentState(state[entityID])
+        self.getEntityVel = lambda state, entityID: getVelFromAgentState(state[entityID])
+        self.getEntityCaughtHistory = lambda state, entityID: getCaughtHistoryFromAgentState(state[entityID])
+
+    def __call__(self, state):
+        agentPos = self.getEntityPos(state, self.agentID)
+        agentVel = self.getEntityVel(state, self.agentID)
+        blocksPos = [self.getEntityPos(state, blockID) for blockID in self.blocksID]
+        blocksInfo = [blockPos - agentPos for blockPos in blocksPos]
+
+        posInfo = []
+        for wolfID in self.wolvesID:
+            if wolfID == self.agentID: continue
+            wolfPos = self.getEntityPos(state, wolfID)
+            posInfo.append(wolfPos - agentPos)
+
+        velInfo = []
+        caughtInfo = []
+        for sheepID in self.sheepsID:
+            if sheepID == self.agentID: continue
+            sheepPos = self.getEntityPos(state, sheepID)
+            posInfo.append(sheepPos - agentPos)
+            sheepVel = self.getEntityVel(state, sheepID)
+            velInfo.append(sheepVel)
+            sheepCaughtHistory = self.getEntityCaughtHistory(state, sheepID)
+            caughtInfo.append([sheepCaughtHistory])
+
+        # Add observation code for apples
+        applesPos = [self.getEntityPos(state, appleID) for appleID in self.applesID]   
+        applesInfo = [applePos - agentPos for applePos in applesPos]
+        
+        return np.concatenate([agentVel] + [agentPos] + blocksInfo + posInfo + velInfo + caughtInfo + applesInfo)  # Append applesInfo
 
 class ObserveWithCaughtHistory:
     def __init__(self, agentID, wolvesID, sheepsID, blocksID, getPosFromAgentState, getVelFromAgentState,
